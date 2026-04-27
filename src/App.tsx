@@ -16,6 +16,7 @@ import PlaneDetail from './pages/planes/PlaneDetail';
 import Receivables from './pages/receivables/Receivables';
 import Payables from './pages/payables/Payables';
 import Invoices from './pages/invoices/Invoices';
+import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import Settings from './pages/Settings';
 
 const queryClient = new QueryClient({
@@ -41,6 +42,7 @@ export default function App() {
                 <Route path="receivables" element={<Receivables />} />
                 <Route path="payables" element={<Payables />} />
                 <Route path="invoices" element={<Invoices />} />
+                <Route path="invoices/:id" element={<InvoiceDetail />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
