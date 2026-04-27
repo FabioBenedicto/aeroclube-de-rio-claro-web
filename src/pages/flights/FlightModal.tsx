@@ -26,7 +26,10 @@ export default function FlightModal({ mode, flight, customers, planes, onClose, 
     end_date: flight?.end_date?.slice(0, 16) ?? '',
   });
 
-  const instructors = customers.filter(c => c.categories.includes('instrutor'));
+  // instructor_id in CreateFlightDto references the Instructor table (not Customer)
+  const instructors = customers
+    .filter(c => c.categories.includes('instrutor') && c.instructors?.length)
+    .map(c => ({ customerId: c.id, instructorId: c.instructors[0].id, name: c.name }));
 
   function handleSave() {
     onSave({
@@ -77,7 +80,7 @@ export default function FlightModal({ mode, flight, customers, planes, onClose, 
               <label>Instrutor (opcional)</label>
               <select className="select" value={form.instructor_id} onChange={e => setForm(f => ({ ...f, instructor_id: e.target.value }))}>
                 <option value="">— Nenhum —</option>
-                {instructors.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {instructors.map(i => <option key={i.instructorId} value={i.instructorId}>{i.name}</option>)}
               </select>
             </div>
           </div>
