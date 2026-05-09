@@ -1,8 +1,29 @@
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export interface User {
   id: number;
   name: string;
   email: string;
   role: 'ADMIN' | 'EMPLOYEE';
+  permissions: string[];
+}
+
+export interface Company {
+  id: number;
+  name: string;
+  cnpj?: string;
+  email?: string;
+  phone?: string;
+  created_at: string;
+  updated_at: string;
+  receivables?: Receivable[];
+  payables?: Payable[];
 }
 
 export interface Customer {
@@ -23,17 +44,12 @@ export interface Customer {
 
 export interface Instructor {
   id: number;
-  canac: string;
-  cht?: number;
   customer_id: number;
   customer?: Customer;
 }
 
 export interface Student {
   id: number;
-  voter_registration?: string;
-  military_service_certificate?: string;
-  canac?: string;
   customer_id: number;
 }
 
@@ -50,8 +66,9 @@ export interface Plane {
   registration: string;
   model?: string;
   flight_hour_value: number;
-  status: string;
   flights?: Flight[];
+  payables?: Payable[];
+  receivables?: Receivable[];
 }
 
 export interface Flight {
@@ -61,7 +78,6 @@ export interface Flight {
   instructor_id?: number;
   type: string;
   double_command: boolean;
-  status: 'in-flight' | 'closed' | 'cancelled';
   origin: string;
   destination: string;
   start_date: string;
@@ -76,7 +92,10 @@ export interface Flight {
 export interface Receivable {
   id: number;
   client_id?: number;
+  company_id?: number;
   flight_id?: number;
+  instructor_id?: number;
+  plane_id?: number;
   title: string;
   description?: string;
   expiration_date: string;
@@ -86,7 +105,11 @@ export interface Receivable {
   status: number; // 0=open, 1=paid
   created_at: string;
   customer?: Customer;
+  company?: Company;
   flight?: Flight;
+  instructor?: Instructor;
+  plane?: Plane;
+  payments?: ReceivablePayment[];
 }
 
 export interface ReceivablePayment {
@@ -95,12 +118,15 @@ export interface ReceivablePayment {
   amount_received: number;
   payment_method?: string;
   payment_date: string;
-  notes?: string;
+  nota_fiscal_path?: string | null;
 }
 
 export interface Payable {
   id: number;
+  client_id?: number;
+  company_id?: number;
   instructor_id?: number;
+  plane_id?: number;
   title: string;
   description?: string;
   amount: number;
@@ -109,7 +135,10 @@ export interface Payable {
   due_date?: string;
   product?: string;
   created_at: string;
+  customer?: Customer;
+  company?: Company;
   instructor?: Instructor;
+  plane?: Plane;
   payments?: PayablePayment[];
 }
 
@@ -120,16 +149,17 @@ export interface PayablePayment {
   method?: string;
   paid_at: string;
   notes?: string;
+  nota_fiscal_path?: string | null;
 }
 
 export interface Bill {
   id: number;
   customer_id: number;
   total_amount: number;
-  status: string; // 'open' | 'partial' | 'paid' | 'overdue'
   issue_date: string;
   due_date?: string;
   paid_at?: string;
+  nota_fiscal_path?: string | null;
   customer?: Customer;
   items?: BillItem[];
 }
