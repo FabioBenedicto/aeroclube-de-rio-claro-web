@@ -6,6 +6,7 @@ interface AuthState {
   token: string | null;
   login: (user: User, token: string) => void;
   logout: () => void;
+  can: (permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -28,7 +29,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem('acrc.token');
   }
 
-  return <AuthContext.Provider value={{ user, token, login, logout }}>{children}</AuthContext.Provider>;
+  function can(permission: string): boolean {
+    if (!user) return false;
+    if (user.role === 'ADMIN') return true;
+    return (user.permissions ?? []).includes(permission);
+  }
+
+  return (
+    <AuthContext.Provider value={{ user, token, login, logout, can }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
