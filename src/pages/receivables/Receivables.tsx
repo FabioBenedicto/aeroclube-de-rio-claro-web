@@ -37,9 +37,11 @@ const btnCancel = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-
 const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90';
 const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 
-function NewReceivableModal({ customers, instructors, planes, companies, onClose, onSave }: {
+function NewReceivableModal({ customers, instructors, partners, employees, planes, companies, onClose, onSave }: {
   customers: { id: number; name: string }[];
   instructors: InstructorOption[];
+  partners: { id: number; name: string }[];
+  employees: { id: number; name: string }[];
   planes: Plane[];
   companies: Company[];
   onClose: () => void;
@@ -47,6 +49,7 @@ function NewReceivableModal({ customers, instructors, planes, companies, onClose
 }) {
   const [form, setForm] = useState({
     client_id: '', company_id: '', instructor_id: '', plane_id: '',
+    partner_id: '', employee_id: '',
     title: '', description: '', product: 'voo',
     expiration_date: '', total_amount: '',
     recurrence: '', occurrences: '2',
@@ -90,6 +93,8 @@ function NewReceivableModal({ customers, instructors, planes, companies, onClose
                 <option value="customer">Cliente</option>
                 <option value="company">Empresa</option>
                 <option value="instructor">Instrutor</option>
+                <option value="partner">Sócio</option>
+                <option value="employee">Funcionário</option>
               </select>
             </div>
           </div>
@@ -118,6 +123,18 @@ function NewReceivableModal({ customers, instructors, planes, companies, onClose
                 <select className={sel} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
                   <option value="">Selecione</option>
                   {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
+                </select>
+              </div>
+              <div className={field}><label className={lbl}>Sócio</label>
+                <select className={sel} value={form.partner_id} onChange={e => setForm(f => ({ ...f, partner_id: e.target.value }))}>
+                  <option value="">Selecione</option>
+                  {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <div className={field}><label className={lbl}>Funcionário</label>
+                <select className={sel} value={form.employee_id} onChange={e => setForm(f => ({ ...f, employee_id: e.target.value }))}>
+                  <option value="">Selecione</option>
+                  {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </select>
               </div>
             </div>
@@ -151,6 +168,8 @@ function NewReceivableModal({ customers, instructors, planes, companies, onClose
             company_id: form.company_id ? Number(form.company_id) : undefined,
             instructor_id: form.instructor_id ? Number(form.instructor_id) : undefined,
             plane_id: form.plane_id ? Number(form.plane_id) : undefined,
+            partner_id: form.partner_id ? Number(form.partner_id) : undefined,
+            employee_id: form.employee_id ? Number(form.employee_id) : undefined,
             title: form.title,
             description: form.description || undefined,
             product: form.product,
@@ -233,6 +252,16 @@ export default function Receivables() {
   const instructors: InstructorOption[] = (instructorData?.data ?? [])
     .filter((c: Customer) => c.instructors?.length > 0)
     .map((c: Customer) => ({ id: c.instructors[0].id, name: c.name }));
+
+  const { data: partnerData } = useQuery({ queryKey: ['customers', '', 'socio', 1], queryFn: () => getCustomers(undefined, 'socio', 1, 9999) });
+  const partners = (partnerData?.data ?? [])
+    .filter((c: Customer) => c.partners?.length > 0)
+    .map((c: Customer) => ({ id: c.partners[0].id, name: c.name }));
+
+  const { data: employeeData } = useQuery({ queryKey: ['customers', '', 'funcionario', 1], queryFn: () => getCustomers(undefined, 'funcionario', 1, 9999) });
+  const employees = (employeeData?.data ?? [])
+    .filter((c: Customer) => (c.employees ?? []).length > 0)
+    .map((c: Customer) => ({ id: c.employees![0].id, name: c.name }));
 
   const { data: companiesData } = useQuery({ queryKey: ['companies', '', 1], queryFn: () => getCompanies(undefined, 1, 9999) });
   const companies: Company[] = companiesData?.data ?? [];
@@ -397,7 +426,7 @@ export default function Receivables() {
         </RowMenu>
       )}
 
-      {newModal && <NewReceivableModal customers={customers} instructors={instructors} planes={planes} companies={companies} onClose={() => setNewModal(false)} onSave={d => createReceivable(d).then(() => { qc.invalidateQueries({ queryKey: ['receivables'] }); setNewModal(false); })} />}
+      {newModal && <NewReceivableModal customers={customers} instructors={instructors} partners={partners} employees={employees} planes={planes} companies={companies} onClose={() => setNewModal(false)} onSave={d => createReceivable(d).then(() => { qc.invalidateQueries({ queryKey: ['receivables'] }); setNewModal(false); })} />}
       {editRec && <EditReceivableModal rec={editRec} onClose={() => setEditRec(null)} onSave={d => updateReceivable(editRec.id, d).then(() => { qc.invalidateQueries({ queryKey: ['receivables'] }); setEditRec(null); })} />}
       {settleRec && <SettleModal rec={settleRec} onClose={() => setSettleRec(null)} onSave={d => payMut.mutate({ id: settleRec.id, d })} />}
     </div>

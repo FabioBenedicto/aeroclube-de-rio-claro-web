@@ -109,7 +109,7 @@ export default function ReceivableDetail() {
         </div>
       )}
 
-      {(rec.customer || rec.company || rec.instructor || rec.plane) && (() => {
+      {(rec.customer || rec.company || rec.instructor || rec.plane || rec.partner || rec.employee) && (() => {
         const pt = rec.payer_type;
         const btnCls = 'flex flex-col px-3.5 py-2.5 text-left cursor-pointer bg-bg-elev border border-line rounded-lg hover:bg-bg-hover';
         const labelCls = 'text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-0.5';
@@ -130,6 +130,16 @@ export default function ReceivableDetail() {
             <div className={labelCls}>Instrutor</div>
             <div className={valueCls}>{rec.instructor.customer.name}</div>
           </button>
+        ) : pt === 'partner' && rec.partner?.customer ? (
+          <button className={btnCls} onClick={() => navigate(`/pessoas/${rec.partner!.customer_id}`)}>
+            <div className={labelCls}>Sócio</div>
+            <div className={valueCls}>{rec.partner.customer.name}</div>
+          </button>
+        ) : pt === 'employee' && rec.employee?.customer ? (
+          <button className={btnCls} onClick={() => navigate(`/pessoas/${rec.employee!.customer_id}`)}>
+            <div className={labelCls}>Funcionário</div>
+            <div className={valueCls}>{rec.employee.customer.name}</div>
+          </button>
         ) : null;
 
         const assocNodes = [
@@ -149,6 +159,18 @@ export default function ReceivableDetail() {
             <button key="instructor" className={btnCls} onClick={() => navigate(`/pessoas/${rec.instructor!.customer_id}`)}>
               <div className={labelCls}>Instrutor</div>
               <div className={valueCls}>{rec.instructor.customer.name}</div>
+            </button>
+          ),
+          pt !== 'partner' && rec.partner?.customer && (
+            <button key="partner" className={btnCls} onClick={() => navigate(`/pessoas/${rec.partner!.customer_id}`)}>
+              <div className={labelCls}>Sócio</div>
+              <div className={valueCls}>{rec.partner.customer.name}</div>
+            </button>
+          ),
+          pt !== 'employee' && rec.employee?.customer && (
+            <button key="employee" className={btnCls} onClick={() => navigate(`/pessoas/${rec.employee!.customer_id}`)}>
+              <div className={labelCls}>Funcionário</div>
+              <div className={valueCls}>{rec.employee.customer.name}</div>
             </button>
           ),
           rec.plane && (

@@ -39,6 +39,7 @@ export interface Customer {
   instructors: Instructor[];
   students: Student[];
   partners: Partner[];
+  employees?: Employee[];
   flights?: Flight[];
   receivables?: Receivable[];
 }
@@ -48,6 +49,12 @@ export interface Instructor {
   customer_id: number;
   customer?: Customer;
   receivables?: Receivable[];
+}
+
+export interface Employee {
+  id: number;
+  customer_id: number;
+  customer?: Customer;
 }
 
 export interface Student {
@@ -61,6 +68,7 @@ export interface Partner {
   next_due_date?: string;
   last_payment_date?: string;
   customer_id: number;
+  customer?: Customer;
 }
 
 export interface Plane {
@@ -98,7 +106,9 @@ export interface Receivable {
   flight_id?: number;
   instructor_id?: number;
   plane_id?: number;
-  payer_type?: 'customer' | 'company' | 'instructor' | 'none';
+  payer_type?: 'customer' | 'company' | 'instructor' | 'partner' | 'employee' | 'none';
+  partner_id?: number;
+  employee_id?: number;
   title: string;
   description?: string;
   expiration_date: string;
@@ -112,6 +122,8 @@ export interface Receivable {
   flight?: Flight;
   instructor?: Instructor;
   plane?: Plane;
+  partner?: Partner;
+  employee?: Employee;
   payments?: ReceivablePayment[];
 }
 
