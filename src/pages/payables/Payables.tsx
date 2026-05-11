@@ -74,7 +74,7 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
             </div>
           </div>
           <div className="border-t border-line pt-3.5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Pagador</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Recebedor</div>
             <div className={field}>
               <select className={sel} value={form.payer_type} onChange={e => setForm(f => ({ ...f, payer_type: e.target.value }))}>
                 <option value="none">Nenhum</option>

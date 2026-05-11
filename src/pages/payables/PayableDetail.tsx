@@ -179,7 +179,7 @@ export default function PayableDetail() {
           <div className="flex flex-col gap-4">
             {payerNode && (
               <div>
-                <h2 className="text-[15px] font-semibold mb-3">Pagador</h2>
+                <h2 className="text-[15px] font-semibold mb-3">Recebedor</h2>
                 <div className="flex flex-wrap gap-2.5">{payerNode}</div>
               </div>
             )}
