@@ -83,17 +83,19 @@ function NewReceivableModal({ customers, instructors, planes, companies, onClose
             </div>
           </div>
           <div className="border-t border-line pt-3.5">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Pagador</div>
+            <div className={field}>
+              <select className={sel} value={form.payer_type} onChange={e => setForm(f => ({ ...f, payer_type: e.target.value }))}>
+                <option value="none">Nenhum</option>
+                <option value="customer">Cliente</option>
+                <option value="company">Empresa</option>
+                <option value="instructor">Instrutor</option>
+              </select>
+            </div>
+          </div>
+          <div className="border-t border-line pt-3.5">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Associações</div>
             <div className="grid grid-cols-2 gap-3">
-              <div className={field} style={{ gridColumn: '1 / -1' }}>
-                <label className={lbl}>Pagador</label>
-                <select className={sel} value={form.payer_type} onChange={e => setForm(f => ({ ...f, payer_type: e.target.value }))}>
-                  <option value="none">Nenhum</option>
-                  <option value="customer">Cliente</option>
-                  <option value="company">Empresa</option>
-                  <option value="instructor">Instrutor</option>
-                </select>
-              </div>
               <div className={field}><label className={lbl}>Cliente</label>
                 <select className={sel} value={form.client_id} onChange={e => setForm(f => ({ ...f, client_id: e.target.value }))}>
                   <option value="">Selecione</option>
