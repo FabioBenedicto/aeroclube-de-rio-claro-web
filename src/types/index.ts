@@ -33,6 +33,7 @@ export interface Customer {
   email: string;
   phone_number?: string;
   flight_hour_balance: number;
+  credit_balance?: number;
   created_at: string;
   categories: string[]; // ['aluno', 'socio', 'instrutor']
   instructors: Instructor[];
@@ -46,6 +47,7 @@ export interface Instructor {
   id: number;
   customer_id: number;
   customer?: Customer;
+  receivables?: Receivable[];
 }
 
 export interface Student {
@@ -96,6 +98,7 @@ export interface Receivable {
   flight_id?: number;
   instructor_id?: number;
   plane_id?: number;
+  payer_type?: 'customer' | 'company' | 'instructor' | 'none';
   title: string;
   description?: string;
   expiration_date: string;
