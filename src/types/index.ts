@@ -142,6 +142,9 @@ export interface Payable {
   company_id?: number;
   instructor_id?: number;
   plane_id?: number;
+  partner_id?: number;
+  employee_id?: number;
+  payer_type?: 'customer' | 'company' | 'instructor' | 'partner' | 'employee' | 'none';
   title: string;
   description?: string;
   amount: number;
@@ -154,6 +157,8 @@ export interface Payable {
   company?: Company;
   instructor?: Instructor;
   plane?: Plane;
+  partner?: Partner;
+  employee?: Employee;
   payments?: PayablePayment[];
 }
 
