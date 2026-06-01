@@ -99,6 +99,103 @@ export default function Settings() {
       ) : (
         <>
           <div className="bg-bg-elev border border-line rounded-lg p-6">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-4">Sicoob / CNAB 240</div>
+            <p className="text-[12px] text-ink-3 mt-0 mb-4">
+              Dados bancários para geração de remessa e importação de retorno CNAB 240.
+            </p>
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">CNPJ (14 dígitos, sem formatação)</label>
+                  <input
+                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
+                    maxLength={14} value={sicoobCnpj}
+                    onChange={e => setSicoobCnpj(e.target.value.replace(/\D/g, '').slice(0, 14))}
+                    placeholder="12345678000100"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">Nome beneficiário (max 30 chars)</label>
+                  <input
+                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
+                    maxLength={30} value={sicoobNome}
+                    onChange={e => setSicoobNome(e.target.value.toUpperCase())}
+                    placeholder="AEROCLUBE RIO CLARO"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">Prefixo coop.</label>
+                  <input
+                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
+                    maxLength={5} value={sicoobPrefix}
+                    onChange={e => setSicoobPrefix(e.target.value.replace(/\D/g, '').slice(0, 5))}
+                    placeholder="04162"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">DV prefixo</label>
+                  <input
+                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
+                    maxLength={1} value={sicoobPrefixDv}
+                    onChange={e => setSicoobPrefixDv(e.target.value.replace(/\D/g, '').slice(0, 1))}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">Conta corrente</label>
+                  <input
+                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
+                    maxLength={12} value={sicoobConta}
+                    onChange={e => setSicoobConta(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                    placeholder="000007550000"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">DV conta</label>
+                  <input
+                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
+                    maxLength={1} value={sicoobContaDv}
+                    onChange={e => setSicoobContaDv(e.target.value.replace(/\D/g, '').slice(0, 1))}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">Carteira</label>
+                  <input
+                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
+                    maxLength={1} value={sicoobCarteira}
+                    onChange={e => setSicoobCarteira(e.target.value.replace(/\D/g, '').slice(0, 1))}
+                    placeholder="1"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">Modalidade</label>
+                  <input
+                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
+                    maxLength={2} value={sicoobModalidade}
+                    onChange={e => setSicoobModalidade(e.target.value.replace(/\D/g, '').slice(0, 2))}
+                    placeholder="01"
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end mt-5">
+              <button
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90 disabled:opacity-60"
+                onClick={handleSaveSicoob}
+                disabled={sicoobMut.isPending}
+              >
+                <Check size={14} />
+                {sicoobMut.isPending ? 'Salvando…' : 'Salvar Sicoob'}
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-bg-elev border border-line rounded-lg p-6">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-4">Planador</div>
             <p className="text-[12px] text-ink-3 mt-0 mb-4">
               Regra de cobrança: valor fixo para os minutos iniciais; após o limite, acrescenta valor por minuto excedente.
@@ -197,102 +294,6 @@ export default function Settings() {
             </button>
           </div>
 
-          <div className="bg-bg-elev border border-line rounded-lg p-6">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-4">Sicoob / CNAB 240</div>
-            <p className="text-[12px] text-ink-3 mt-0 mb-4">
-              Dados bancários para geração de remessa e importação de retorno CNAB 240.
-            </p>
-            <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-ink-2">CNPJ (14 dígitos, sem formatação)</label>
-                  <input
-                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
-                    maxLength={14} value={sicoobCnpj}
-                    onChange={e => setSicoobCnpj(e.target.value.replace(/\D/g, '').slice(0, 14))}
-                    placeholder="12345678000100"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-ink-2">Nome beneficiário (max 30 chars)</label>
-                  <input
-                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
-                    maxLength={30} value={sicoobNome}
-                    onChange={e => setSicoobNome(e.target.value.toUpperCase())}
-                    placeholder="AEROCLUBE RIO CLARO"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-ink-2">Prefixo coop.</label>
-                  <input
-                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
-                    maxLength={5} value={sicoobPrefix}
-                    onChange={e => setSicoobPrefix(e.target.value.replace(/\D/g, '').slice(0, 5))}
-                    placeholder="04162"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-ink-2">DV prefixo</label>
-                  <input
-                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
-                    maxLength={1} value={sicoobPrefixDv}
-                    onChange={e => setSicoobPrefixDv(e.target.value.replace(/\D/g, '').slice(0, 1))}
-                    placeholder="0"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-ink-2">Conta corrente</label>
-                  <input
-                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
-                    maxLength={12} value={sicoobConta}
-                    onChange={e => setSicoobConta(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                    placeholder="000007550000"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-ink-2">DV conta</label>
-                  <input
-                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
-                    maxLength={1} value={sicoobContaDv}
-                    onChange={e => setSicoobContaDv(e.target.value.replace(/\D/g, '').slice(0, 1))}
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-ink-2">Carteira</label>
-                  <input
-                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
-                    maxLength={1} value={sicoobCarteira}
-                    onChange={e => setSicoobCarteira(e.target.value.replace(/\D/g, '').slice(0, 1))}
-                    placeholder="1"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-ink-2">Modalidade</label>
-                  <input
-                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
-                    maxLength={2} value={sicoobModalidade}
-                    onChange={e => setSicoobModalidade(e.target.value.replace(/\D/g, '').slice(0, 2))}
-                    placeholder="01"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end mt-5">
-              <button
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90 disabled:opacity-60"
-                onClick={handleSaveSicoob}
-                disabled={sicoobMut.isPending}
-              >
-                <Check size={14} />
-                {sicoobMut.isPending ? 'Salvando…' : 'Salvar Sicoob'}
-              </button>
-            </div>
-          </div>
         </>
       )}
     </div>
