@@ -36,6 +36,11 @@ export interface Customer {
   credit_balance?: number;
   created_at: string;
   categories: string[]; // ['aluno', 'socio', 'instrutor']
+  address?: string;
+  neighborhood?: string;
+  city?: string;
+  state?: string;
+  zip_code?: string;
   instructors: Instructor[];
   students: Student[];
   partners: Partner[];
@@ -75,10 +80,23 @@ export interface Plane {
   id: number;
   registration: string;
   model?: string;
-  flight_hour_value: number;
+  aircraft_type: string;
+  flight_hour_value?: number | null;
   flights?: Flight[];
   payables?: Payable[];
   receivables?: Receivable[];
+}
+
+export interface FlightCalculationBreakdown {
+  aircraft_type: string;
+  total_minutes?: number;
+  initial_minutes?: number;
+  exceeded_minutes?: number;
+  initial_value?: number;
+  minute_value?: number;
+  total_hours?: number;
+  flight_hour_value?: number;
+  total_amount: number;
 }
 
 export interface Flight {
@@ -86,6 +104,7 @@ export interface Flight {
   plane_id: number;
   customer_id: number;
   instructor_id?: number;
+  aircraft_type: string;
   type: string;
   double_command: boolean;
   origin: string;
@@ -94,6 +113,7 @@ export interface Flight {
   end_date?: string;
   total_hours?: number;
   total_amount?: number;
+  calculation_breakdown?: FlightCalculationBreakdown | null;
   plane?: Plane;
   customer?: Customer;
   instructor?: Instructor;
@@ -111,7 +131,7 @@ export interface Receivable {
   employee_id?: number;
   title: string;
   description?: string;
-  expiration_date: string;
+  expiration_date?: string | null;
   total_amount: number;
   amount_received: number;
   product?: string;
@@ -178,17 +198,17 @@ export interface Bill {
   total_amount: number;
   issue_date: string;
   due_date?: string;
-  paid_at?: string;
+  paid_at?: string | null;
   nota_fiscal_path?: string | null;
   customer?: Customer;
-  items?: BillItem[];
+  receivable_payments?: BillItem[];
 }
 
 export interface BillItem {
   id: number;
   bill_id: number;
   receivable_id: number;
-  amount: number;
+  amount_received: number;
   receivable?: Receivable;
 }
 
@@ -196,4 +216,21 @@ export interface CreditHistory {
   customer_id: number;
   flight_hour_balance: number;
   movements: ReceivablePayment[];
+}
+
+export interface Settings {
+  instructor_percentage: number;
+  partner_monthly_dues: number;
+  glider_initial_minutes: number;
+  glider_initial_value: number;
+  glider_minute_value: number;
+  sicoob_cooperativa_prefix?: string;
+  sicoob_cooperativa_dv?: string;
+  sicoob_conta?: string;
+  sicoob_conta_dv?: string;
+  sicoob_carteira?: string;
+  sicoob_modalidade?: string;
+  sicoob_cnpj?: string;
+  sicoob_nome_empresa?: string;
+  sicoob_remessa_sequence?: number;
 }
