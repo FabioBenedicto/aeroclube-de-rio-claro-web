@@ -302,7 +302,9 @@ export default function Invoices() {
       {menuState && (() => { const b = bills.find((x: Bill) => x.id === menuState.id); return b ? (
         <RowMenu top={menuState.top} right={menuState.right} onClose={() => setMenuState(null)}>
           <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => navigate(`/invoices/${b.id}`)}><Eye size={14} /> Ver detalhes</button>
-          <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-danger rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-danger-soft text-left" onClick={() => deleteMut.mutate(b.id)}><Trash2 size={14} /> Estornar</button>
+          {b.status === 'open' && (
+            <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-danger rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-danger-soft text-left" onClick={() => deleteMut.mutate(b.id)}><Trash2 size={14} /> Deletar</button>
+          )}
           <RowMenuSep />
           {b.nota_fiscal_path ? (
             <>
