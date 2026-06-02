@@ -237,4 +237,5 @@ export interface Settings {
   sicoob_nome_empresa?: string;
   sicoob_remessa_sequence?: number;
   sicoob_juros?: number;
+  sicoob_juros_prazo?: number;
 }

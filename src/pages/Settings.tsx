@@ -23,6 +23,7 @@ export default function Settings() {
   const [sicoobCarteira, setSicoobCarteira] = useState('');
   const [sicoobModalidade, setSicoobModalidade] = useState('');
   const [sicoobJuros, setSicoobJuros] = useState(0);
+  const [sicoobJurosPrazo, setSicoobJurosPrazo] = useState(0);
 
   useEffect(() => {
     if (data) {
@@ -40,6 +41,7 @@ export default function Settings() {
       setSicoobCarteira(data.sicoob_carteira ?? '');
       setSicoobModalidade(data.sicoob_modalidade ?? '');
       setSicoobJuros(Number(data.sicoob_juros ?? 0));
+      setSicoobJurosPrazo(Number(data.sicoob_juros_prazo ?? 0));
     }
   }, [data]);
 
@@ -68,6 +70,7 @@ export default function Settings() {
       sicoob_carteira: sicoobCarteira || undefined,
       sicoob_modalidade: sicoobModalidade || undefined,
       sicoob_juros: sicoobJuros,
+      sicoob_juros_prazo: sicoobJurosPrazo,
     });
   }
 
@@ -183,6 +186,18 @@ export default function Settings() {
                     value={sicoobJuros}
                     onChange={e => setSicoobJuros(parseFloat(e.target.value) || 0)}
                     placeholder="1.00"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">Prazo de juros (dias)</label>
+                  <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
+                    value={sicoobJurosPrazo}
+                    onChange={e => setSicoobJurosPrazo(parseInt(e.target.value) || 0)}
+                    placeholder="0"
                   />
                 </div>
               </div>
