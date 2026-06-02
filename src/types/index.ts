@@ -229,6 +229,7 @@ export interface Settings {
   glider_minute_value: number;
   sicoob_cooperativa_prefix?: string;
   sicoob_cooperativa_dv?: string;
+  sicoob_agencia?: string;
   sicoob_conta?: string;
   sicoob_conta_dv?: string;
   sicoob_carteira?: string;

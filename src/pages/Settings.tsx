@@ -18,6 +18,7 @@ export default function Settings() {
   const [sicoobNome, setSicoobNome] = useState('');
   const [sicoobPrefix, setSicoobPrefix] = useState('');
   const [sicoobPrefixDv, setSicoobPrefixDv] = useState('');
+  const [sicoobAgencia, setSicoobAgencia] = useState('');
   const [sicoobConta, setSicoobConta] = useState('');
   const [sicoobContaDv, setSicoobContaDv] = useState('');
   const [sicoobCarteira, setSicoobCarteira] = useState('');
@@ -36,6 +37,7 @@ export default function Settings() {
       setSicoobNome(data.sicoob_nome_empresa ?? '');
       setSicoobPrefix(data.sicoob_cooperativa_prefix ?? '');
       setSicoobPrefixDv(data.sicoob_cooperativa_dv ?? '');
+      setSicoobAgencia(data.sicoob_agencia ?? '');
       setSicoobConta(data.sicoob_conta ?? '');
       setSicoobContaDv(data.sicoob_conta_dv ?? '');
       setSicoobCarteira(data.sicoob_carteira ?? '');
@@ -65,6 +67,7 @@ export default function Settings() {
       sicoob_nome_empresa: sicoobNome || undefined,
       sicoob_cooperativa_prefix: sicoobPrefix || undefined,
       sicoob_cooperativa_dv: sicoobPrefixDv || undefined,
+      sicoob_agencia: sicoobAgencia || undefined,
       sicoob_conta: sicoobConta || undefined,
       sicoob_conta_dv: sicoobContaDv || undefined,
       sicoob_carteira: sicoobCarteira || undefined,
@@ -133,6 +136,15 @@ export default function Settings() {
                     maxLength={1} value={sicoobPrefixDv}
                     onChange={e => setSicoobPrefixDv(e.target.value.replace(/\D/g, '').slice(0, 1))}
                     placeholder="0"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">Agência mantenedora (4 dígitos)</label>
+                  <input
+                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
+                    maxLength={4} value={sicoobAgencia}
+                    onChange={e => setSicoobAgencia(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    placeholder="0001"
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
