@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, FileSpreadsheet, Eye, X } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, Eye, X } from 'lucide-react';
 import { getReceivables, createReceivable, updateReceivable, deleteReceivable, registerPayment } from '../../api/receivables';
-import { downloadReport } from '../../api/export';
+import Checkbox from '../../components/ui/Checkbox';
 import { getCustomers } from '../../api/customers';
 import { getPlanes } from '../../api/planes';
 import { getCompanies } from '../../api/companies';
 import DateInput from '../../components/DateInput';
-import FilterPopover from '../../components/FilterPopover';
+import { maskCurrency, parseCurrency } from '../../utils/masks';
 import { formatBRL, formatDate, receivableStatus, STATUS_LABEL, STATUS_BADGE } from '../../utils/format';
 import type { Receivable, Plane, Customer, Company } from '../../types';
 import RowMenu, { RowMenuSep } from '../../components/RowMenu';
@@ -18,10 +18,11 @@ import { PERM } from '../../utils/permissions';
 import SettleModal from '../../components/SettleModal';
 import Badge from '../../components/ui/Badge';
 import { cn } from '../../utils/cn';
+import { toast, extractErrorMessage } from '../../utils/toast';
 
-type InstructorOption = { id: number; name: string };
+type NamedOption = { id: number; name: string };
 
-const TABS = [['all','Todos'],['0','Em aberto'],['partial','Parcial'],['1','Pagos'],['overdue','Vencidos']] as const;
+const TABS = [['all','Todos'],['0','A receber'],['partial','Parcial'],['1','Pagos'],['overdue','Vencidos']] as const;
 type MenuState = { id: number; top: number; right: number };
 
 const modalBase = 'fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4';
@@ -38,23 +39,25 @@ const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text
 const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 
 function NewReceivableModal({ customers, instructors, partners, employees, planes, companies, onClose, onSave }: {
-  customers: { id: number; name: string }[];
-  instructors: InstructorOption[];
-  partners: { id: number; name: string }[];
-  employees: { id: number; name: string }[];
+  customers: NamedOption[];
+  instructors: NamedOption[];
+  partners: NamedOption[];
+  employees: NamedOption[];
   planes: Plane[];
   companies: Company[];
   onClose: () => void;
   onSave: (d: unknown) => void;
 }) {
   const [form, setForm] = useState({
-    client_id: '', company_id: '', instructor_id: '', plane_id: '',
-    partner_id: '', employee_id: '',
+    payer_type: 'none', payer_id: '', plane_id: '',
     title: '', description: '', product: 'voo',
     expiration_date: '', total_amount: '',
     recurrence: '', occurrences: '2',
-    payer_type: 'none',
   });
+
+  const payerLists: Record<string, NamedOption[]> = { customer: customers, company: companies, instructor: instructors, partner: partners, employee: employees };
+  const payerList = payerLists[form.payer_type] ?? [];
+
   return (
     <div className={modalBase} onClick={onClose}>
       <div className={modalPanel} onClick={e => e.stopPropagation()}>
@@ -81,66 +84,45 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
             <div className={field}><label className={lbl}>Valor</label>
               <div className="flex rounded-md border border-line overflow-hidden focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus)]">
                 <span className="flex items-center px-2.5 text-[13px] text-ink-3 bg-bg-sunk border-r border-line">R$</span>
-                <input type="number" step="0.01" className="flex-1 px-2.5 py-[7px] border-0 bg-bg-elev text-ink text-[13px] font-mono outline-none" placeholder="0,00" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} />
+                <input inputMode="numeric" className="flex-1 px-2.5 py-[7px] border-0 bg-bg-elev text-ink text-[13px] font-mono outline-none" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: maskCurrency(e.target.value) }))} />
               </div>
             </div>
           </div>
-          <div className="border-t border-line pt-3.5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Pagador</div>
+
+          <div className="border-t border-line pt-3.5 flex flex-col gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Pagador</div>
             <div className={field}>
-              <select className={sel} value={form.payer_type} onChange={e => setForm(f => ({ ...f, payer_type: e.target.value }))}>
+              <select className={sel} value={form.payer_type} onChange={e => setForm(f => ({ ...f, payer_type: e.target.value, payer_id: '' }))}>
                 <option value="none">Nenhum</option>
-                <option value="customer">Cliente</option>
-                <option value="company">Empresa</option>
+                <option value="customer">Pessoa</option>
                 <option value="instructor">Instrutor</option>
                 <option value="partner">Sócio</option>
                 <option value="employee">Funcionário</option>
+                <option value="company">Empresa</option>
+              </select>
+            </div>
+            {form.payer_type !== 'none' && (
+              <div className={field}>
+                <select className={sel} value={form.payer_id} onChange={e => setForm(f => ({ ...f, payer_id: e.target.value }))}>
+                  <option value="">Selecione</option>
+                  {payerList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-line pt-3.5 flex flex-col gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Aeronave</div>
+            <div className={field}>
+              <select className={sel} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
+                <option value="">Sem aeronave</option>
+                {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
               </select>
             </div>
           </div>
-          <div className="border-t border-line pt-3.5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Associações</div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className={field}><label className={lbl}>Cliente</label>
-                <select className={sel} value={form.client_id} onChange={e => setForm(f => ({ ...f, client_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div className={field}><label className={lbl}>Empresa</label>
-                <select className={sel} value={form.company_id} onChange={e => setForm(f => ({ ...f, company_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div className={field}><label className={lbl}>Instrutor</label>
-                <select className={sel} value={form.instructor_id} onChange={e => setForm(f => ({ ...f, instructor_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {instructors.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                </select>
-              </div>
-              <div className={field}><label className={lbl}>Aeronave</label>
-                <select className={sel} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
-                </select>
-              </div>
-              <div className={field}><label className={lbl}>Sócio</label>
-                <select className={sel} value={form.partner_id} onChange={e => setForm(f => ({ ...f, partner_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-              <div className={field}><label className={lbl}>Funcionário</label>
-                <select className={sel} value={form.employee_id} onChange={e => setForm(f => ({ ...f, employee_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                </select>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-line pt-3.5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Recorrência</div>
+
+          <div className="border-t border-line pt-3.5 flex flex-col gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Recorrência</div>
             <div className="grid grid-cols-2 gap-3">
               <div className={field}><label className={lbl}>Repetir</label>
                 <select className={sel} value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))}>
@@ -155,7 +137,7 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
               )}
             </div>
             {form.recurrence && (
-              <div className="text-[12px] text-ink-3 mt-1">
+              <div className="text-[12px] text-ink-3">
                 Serão criados <strong>{form.occurrences}</strong> títulos com vencimentos {form.recurrence === 'monthly' ? 'mensais' : form.recurrence === 'weekly' ? 'semanais' : 'anuais'}, a partir da data informada.
               </div>
             )}
@@ -164,18 +146,18 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
         <div className={modalFoot}>
           <button className={btnCancel} onClick={onClose}>Cancelar</button>
           <button className={btnPrimary} onClick={() => onSave({
-            client_id: form.client_id ? Number(form.client_id) : undefined,
-            company_id: form.company_id ? Number(form.company_id) : undefined,
-            instructor_id: form.instructor_id ? Number(form.instructor_id) : undefined,
+            payer_type: form.payer_type,
+            ...(form.payer_type === 'customer' && form.payer_id && { client_id: Number(form.payer_id) }),
+            ...(form.payer_type === 'company' && form.payer_id && { company_id: Number(form.payer_id) }),
+            ...(form.payer_type === 'instructor' && form.payer_id && { instructor_id: Number(form.payer_id) }),
+            ...(form.payer_type === 'partner' && form.payer_id && { partner_id: Number(form.payer_id) }),
+            ...(form.payer_type === 'employee' && form.payer_id && { employee_id: Number(form.payer_id) }),
             plane_id: form.plane_id ? Number(form.plane_id) : undefined,
-            partner_id: form.partner_id ? Number(form.partner_id) : undefined,
-            employee_id: form.employee_id ? Number(form.employee_id) : undefined,
             title: form.title,
             description: form.description || undefined,
             product: form.product,
-            expiration_date: form.expiration_date,
-            total_amount: parseFloat(form.total_amount),
-            payer_type: form.payer_type,
+            expiration_date: form.expiration_date || undefined,
+            total_amount: parseCurrency(form.total_amount),
             recurrence: form.recurrence || undefined,
             occurrences: form.recurrence ? Number(form.occurrences) : undefined,
           })}>
@@ -188,7 +170,12 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
 }
 
 function EditReceivableModal({ rec, onClose, onSave }: { rec: Receivable; onClose: () => void; onSave: (d: unknown) => void }) {
-  const [form, setForm] = useState({ title: rec.title, description: rec.description ?? '', expiration_date: rec.expiration_date?.slice(0, 10) ?? '', total_amount: String(rec.total_amount) });
+  const [form, setForm] = useState({
+    title: rec.title,
+    description: rec.description ?? '',
+    expiration_date: rec.expiration_date?.slice(0, 10) ?? '',
+    total_amount: maskCurrency(Math.round(Number(rec.total_amount) * 100).toString()),
+  });
   return (
     <div className={modalBase} onClick={onClose}>
       <div className={modalPanel} onClick={e => e.stopPropagation()}>
@@ -206,7 +193,7 @@ function EditReceivableModal({ rec, onClose, onSave }: { rec: Receivable; onClos
             <div className={field}><label className={lbl}>Valor</label>
               <div className="flex rounded-md border border-line overflow-hidden focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus)]">
                 <span className="flex items-center px-2.5 text-[13px] text-ink-3 bg-bg-sunk border-r border-line">R$</span>
-                <input type="number" step="0.01" className="flex-1 px-2.5 py-[7px] border-0 bg-bg-elev text-ink text-[13px] font-mono outline-none" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} />
+                <input inputMode="numeric" className="flex-1 px-2.5 py-[7px] border-0 bg-bg-elev text-ink text-[13px] font-mono outline-none" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: maskCurrency(e.target.value) }))} />
               </div>
             </div>
           </div>
@@ -216,7 +203,7 @@ function EditReceivableModal({ rec, onClose, onSave }: { rec: Receivable; onClos
         </div>
         <div className={modalFoot}>
           <button className={btnCancel} onClick={onClose}>Cancelar</button>
-          <button className={btnPrimary} onClick={() => onSave({ title: form.title, description: form.description || undefined, expiration_date: form.expiration_date, total_amount: parseFloat(form.total_amount) })}><CheckIcon size={14} /> Salvar</button>
+          <button className={btnPrimary} onClick={() => onSave({ title: form.title, description: form.description || undefined, expiration_date: form.expiration_date || undefined, total_amount: parseCurrency(form.total_amount) })}><CheckIcon size={14} /> Salvar</button>
         </div>
       </div>
     </div>
@@ -230,6 +217,8 @@ export default function Receivables() {
   const [tab, setTab] = useState<string>('all');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [pendingFrom, setPendingFrom] = useState('');
+  const [pendingTo, setPendingTo] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
@@ -249,17 +238,17 @@ export default function Receivables() {
   const planes: Plane[] = planesData?.data ?? [];
 
   const { data: instructorData } = useQuery({ queryKey: ['customers', '', 'instrutor', 1], queryFn: () => getCustomers(undefined, 'instrutor', 1, 9999) });
-  const instructors: InstructorOption[] = (instructorData?.data ?? [])
+  const instructors: NamedOption[] = (instructorData?.data ?? [])
     .filter((c: Customer) => c.instructors?.length > 0)
     .map((c: Customer) => ({ id: c.instructors[0].id, name: c.name }));
 
   const { data: partnerData } = useQuery({ queryKey: ['customers', '', 'socio', 1], queryFn: () => getCustomers(undefined, 'socio', 1, 9999) });
-  const partners = (partnerData?.data ?? [])
+  const partners: NamedOption[] = (partnerData?.data ?? [])
     .filter((c: Customer) => c.partners?.length > 0)
     .map((c: Customer) => ({ id: c.partners[0].id, name: c.name }));
 
   const { data: employeeData } = useQuery({ queryKey: ['customers', '', 'funcionario', 1], queryFn: () => getCustomers(undefined, 'funcionario', 1, 9999) });
-  const employees = (employeeData?.data ?? [])
+  const employees: NamedOption[] = (employeeData?.data ?? [])
     .filter((c: Customer) => (c.employees ?? []).length > 0)
     .map((c: Customer) => ({ id: c.employees![0].id, name: c.name }));
 
@@ -272,19 +261,21 @@ export default function Receivables() {
   });
   const allRecs = data?.data ?? [];
 
-  const deleteMut = useMutation({ mutationFn: deleteReceivable, onSuccess: () => qc.invalidateQueries({ queryKey: ['receivables'] }) });
+  const deleteMut = useMutation({ mutationFn: deleteReceivable, onSuccess: () => qc.invalidateQueries({ queryKey: ['receivables'] }), onError: (e: unknown) => toast.error(extractErrorMessage(e)) });
   const bulkDeleteMut = useMutation({
     mutationFn: (ids: number[]) => Promise.all(ids.map(id => deleteReceivable(id))),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['receivables'] }); setSelected(new Set()); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const payMut = useMutation({
     mutationFn: ({ id, d }: { id: number; d: unknown }) => registerPayment(id, d as { amount_received: number; payment_method?: string; payment_date?: string; notes?: string }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['receivables'] }); setSettleRec(null); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
   const menuRec = menuState ? allRecs.find(r => r.id === menuState.id) ?? null : null;
 
-  const { data: kpiData } = useQuery({ queryKey: ['receivables', 'kpi'], queryFn: () => getReceivables(undefined, undefined, 1, 9999) });
+  const { data: kpiData } = useQuery({ queryKey: ['receivables', 'kpi', dateFrom, dateTo], queryFn: () => getReceivables(undefined, undefined, dateFrom || undefined, dateTo || undefined, 1, 9999) });
   const kpiRecs = kpiData?.data ?? [];
   const total = kpiRecs.reduce((a, r) => a + Number(r.total_amount), 0);
   const received = kpiRecs.reduce((a, r) => a + Number(r.amount_received), 0);
@@ -299,33 +290,44 @@ export default function Receivables() {
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">Contas a receber</h1>
+          <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">Títulos a receber</h1>
           <p className="text-[13px] text-ink-3 mt-1 m-0">Títulos gerados por voos, mensalidades e serviços</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button className={btnCancel} onClick={() => downloadReport(`/receivables/export?status=${tab === 'all' ? '' : tab}&search=${debouncedSearch}&date_from=${dateFrom}&date_to=${dateTo}`, 'contas-a-receber.xlsx')}>
-            <FileSpreadsheet size={14} /> Relatório
-          </button>
-          {can(PERM.RECEIVABLES.CREATE) && <button className={btnPrimary} onClick={() => setNewModal(true)}><Plus size={14} /> Novo título</button>}
+{can(PERM.RECEIVABLES.CREATE) && <button className={btnPrimary} onClick={() => setNewModal(true)}><Plus size={14} /> Novo título</button>}
         </div>
+      </div>
+
+      <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-4">
+      <div className="flex items-center gap-3 justify-end">
+        <span className={lbl + ' whitespace-nowrap'}>Criação</span>
+        <div className="flex items-center gap-2">
+          <span className={lbl + ' whitespace-nowrap'}>de</span>
+          <DateInput value={pendingFrom} onChange={setPendingFrom} />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={lbl + ' whitespace-nowrap'}>Até</span>
+          <DateInput value={pendingTo} onChange={setPendingTo} />
+        </div>
+        <button className={btnPrimary} onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); }}>Aplicar</button>
       </div>
 
       <div className="grid grid-cols-4 gap-3">
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Total emitido</div>
+          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor total</div>
           <div className="text-[24px] font-bold tracking-tight font-mono"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Já recebido</div>
-          <div className="text-[24px] font-bold tracking-tight font-mono text-success"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(received)}</div>
+          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor recebido</div>
+          <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: received > 0 ? 'var(--success)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(received)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">A receber</div>
-          <div className="text-[24px] font-bold tracking-tight font-mono"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total - received)}</div>
+          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor a receber</div>
+          <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: (total - received) > 0 ? 'var(--warn)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total - received)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Vencidos</div>
-          <div className="text-[24px] font-bold tracking-tight font-mono text-danger"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(overdue)}</div>
+          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor vencido</div>
+          <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: overdue > 0 ? 'var(--danger)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(overdue)}</div>
         </div>
       </div>
 
@@ -341,13 +343,9 @@ export default function Receivables() {
             ))}
           </div>
           <div className="flex-1" />
-          <FilterPopover activeCount={[dateFrom, dateTo].filter(Boolean).length} onClear={() => { setDateFrom(''); setDateTo(''); }}>
-            <div className={field}><label className={lbl}>A partir de</label><DateInput value={dateFrom} onChange={setDateFrom} /></div>
-            <div className={field}><label className={lbl}>Até</label><DateInput value={dateTo} onChange={setDateTo} /></div>
-          </FilterPopover>
           <div className="relative flex items-center">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input className="pl-[30px] pr-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-[13px] text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] min-w-[220px]" placeholder="Buscar por cliente ou título…" value={search} onChange={e => setSearch(e.target.value)} />
+            <input className="pl-[30px] pr-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-[13px] text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] min-w-[250px]" placeholder="Buscar por título ou pagador" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
 
@@ -368,10 +366,11 @@ export default function Receivables() {
               <table className="w-full border-collapse text-[13px]">
                 <thead>
                   <tr>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line w-9"><input type="checkbox" checked={allSelected} onChange={toggleAll} /></th>
+                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line w-9"><Checkbox checked={allSelected} onChange={toggleAll} /></th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">ID</th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Título</th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Tipo</th>
+                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Pagador</th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Vencimento</th>
                     <th className="px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Valor</th>
                     <th className="px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Recebido</th>
@@ -386,17 +385,18 @@ export default function Receivables() {
                     const pct = Number(r.total_amount) > 0 ? Math.round((Number(r.amount_received) / Number(r.total_amount)) * 100) : 0;
                     return (
                       <tr key={r.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/receivables/${r.id}`)}>
-                        <td className="px-3.5 py-2.5 border-b border-line w-9" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selected.has(r.id)} onChange={() => toggleOne(r.id)} /></td>
+                        <td className="px-3.5 py-2.5 border-b border-line w-9" onClick={e => e.stopPropagation()}><Checkbox checked={selected.has(r.id)} onChange={() => toggleOne(r.id)} /></td>
                         <td className="px-3.5 py-2.5 border-b border-line font-mono text-[11.5px]">{r.id}</td>
                         <td className="px-3.5 py-2.5 border-b border-line">{r.title}</td>
                         <td className="px-3.5 py-2.5 border-b border-line">{r.product ? <span className="inline-flex items-center px-1.5 py-px rounded-[3px] text-[11px] font-medium bg-bg-sunk text-ink-3 border border-line">{r.product}</span> : '—'}</td>
+                        <td className="px-3.5 py-2.5 border-b border-line text-[12px] text-ink-3">{r.customer?.name ?? r.company?.name ?? r.instructor?.customer?.name ?? '—'}</td>
                         <td className="px-3.5 py-2.5 border-b border-line font-mono text-[12px]">{formatDate(r.expiration_date)}</td>
                         <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">R$ {formatBRL(r.total_amount)}</td>
-                        <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">{Number(r.amount_received) > 0 ? `R$ ${formatBRL(r.amount_received)}` : '—'}</td>
+                        <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">{`R$ ${formatBRL(r.amount_received)}`}</td>
                         <td className="px-3.5 py-2.5 border-b border-line" style={{ minWidth: 120 }}>
                           <div className="flex items-center gap-2">
-                            <div className="flex-1 h-1.5 bg-bg-sunk rounded-full overflow-hidden"><div className="h-full bg-accent rounded-full" style={{ width: `${pct}%` }} /></div>
-                            <span className="font-mono text-[11px] text-ink-3 min-w-[32px] text-right">{pct}%</span>
+                            <div className="flex-1 h-1.5 bg-bg-sunk rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: st === 'paid' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--line)', transition: 'width 0.3s' }} /></div>
+                            <span className="font-mono text-[11px] min-w-[32px] text-right" style={{ color: st === 'paid' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--ink-3)' }}>{pct}%</span>
                           </div>
                         </td>
                         <td className="px-3.5 py-2.5 border-b border-line">
@@ -408,13 +408,14 @@ export default function Receivables() {
                       </tr>
                     );
                   })}
-                  {allRecs.length === 0 && <tr><td colSpan={10} className="px-3.5 py-8 text-center text-ink-3">Nenhum título encontrado.</td></tr>}
+                  {allRecs.length === 0 && <tr><td colSpan={11} className="px-3.5 py-8 text-center text-ink-3">Nenhum título encontrado.</td></tr>}
                 </tbody>
               </table>
             </div>
             <Pagination page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} limit={20} onChange={setPage} />
           </>
         )}
+      </div>
       </div>
 
       {menuState && menuRec && (
@@ -426,8 +427,8 @@ export default function Receivables() {
         </RowMenu>
       )}
 
-      {newModal && <NewReceivableModal customers={customers} instructors={instructors} partners={partners} employees={employees} planes={planes} companies={companies} onClose={() => setNewModal(false)} onSave={d => createReceivable(d).then(() => { qc.invalidateQueries({ queryKey: ['receivables'] }); setNewModal(false); })} />}
-      {editRec && <EditReceivableModal rec={editRec} onClose={() => setEditRec(null)} onSave={d => updateReceivable(editRec.id, d).then(() => { qc.invalidateQueries({ queryKey: ['receivables'] }); setEditRec(null); })} />}
+      {newModal && <NewReceivableModal customers={customers} instructors={instructors} partners={partners} employees={employees} planes={planes} companies={companies} onClose={() => setNewModal(false)} onSave={d => createReceivable(d).then(() => { qc.invalidateQueries({ queryKey: ['receivables'] }); setNewModal(false); }).catch((e: unknown) => toast.error(extractErrorMessage(e)))} />}
+      {editRec && <EditReceivableModal rec={editRec} onClose={() => setEditRec(null)} onSave={d => updateReceivable(editRec.id, d).then(() => { qc.invalidateQueries({ queryKey: ['receivables'] }); setEditRec(null); }).catch((e: unknown) => toast.error(extractErrorMessage(e)))} />}
       {settleRec && <SettleModal rec={settleRec} onClose={() => setSettleRec(null)} onSave={d => payMut.mutate({ id: settleRec.id, d })} />}
     </div>
   );

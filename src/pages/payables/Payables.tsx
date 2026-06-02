@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MoreHorizontal, Trash2, Check as CheckIcon, Eye, FileSpreadsheet, X } from 'lucide-react';
+import { Plus, MoreHorizontal, Trash2, Check as CheckIcon, Eye, X } from 'lucide-react';
 import { getPayables, createPayable, deletePayable, registerPayablePayment } from '../../api/payables';
-import { downloadReport } from '../../api/export';
+import Checkbox from '../../components/ui/Checkbox';
 import PayModal from '../../components/PayModal';
 import { getCustomers } from '../../api/customers';
 import { getPlanes } from '../../api/planes';
 import { getCompanies } from '../../api/companies';
 import DateInput from '../../components/DateInput';
-import FilterPopover from '../../components/FilterPopover';
 import { formatBRL, formatDate } from '../../utils/format';
 import type { Payable, Plane, Customer, Company } from '../../types';
 import RowMenu, { RowMenuSep } from '../../components/RowMenu';
@@ -17,8 +16,10 @@ import Pagination from '../../components/Pagination';
 import Badge from '../../components/ui/Badge';
 import { useAuth } from '../../contexts/AuthContext';
 import { PERM } from '../../utils/permissions';
+import { toast, extractErrorMessage } from '../../utils/toast';
+import { maskCurrency, parseCurrency } from '../../utils/masks';
 
-type InstructorOption = { id: number; name: string };
+type NamedOption = { id: number; name: string };
 const P_STATUS_LABEL: Record<string, string> = { open: 'A pagar', partial: 'Parcial', closed: 'Pago' };
 const P_STATUS_BADGE: Record<string, string> = { open: 'warn', partial: 'accent', closed: 'success' };
 type MenuState = { id: number; top: number; right: number };
@@ -37,16 +38,24 @@ const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text
 const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 
 function NewPayableModal({ customers, instructors, partners, employees, planes, companies, onClose, onSave }: {
-  customers: { id: number; name: string }[];
-  instructors: InstructorOption[];
-  partners: { id: number; name: string }[];
-  employees: { id: number; name: string }[];
+  customers: NamedOption[];
+  instructors: NamedOption[];
+  partners: NamedOption[];
+  employees: NamedOption[];
   planes: Plane[];
   companies: Company[];
   onClose: () => void;
   onSave: (d: unknown) => void;
 }) {
-  const [form, setForm] = useState({ title: '', description: '', amount: '', due_date: '', product: 'servico', client_id: '', company_id: '', instructor_id: '', plane_id: '', partner_id: '', employee_id: '', payer_type: 'none', recurrence: '', occurrences: '2' });
+  const [form, setForm] = useState({
+    payer_type: 'none', payer_id: '', plane_id: '',
+    title: '', description: '', amount: '', due_date: '',
+    product: 'servico', recurrence: '', occurrences: '2',
+  });
+
+  const payerLists: Record<string, NamedOption[]> = { customer: customers, company: companies, instructor: instructors, partner: partners, employee: employees };
+  const payerList = payerLists[form.payer_type] ?? [];
+
   return (
     <div className={modalBase} onClick={onClose}>
       <div className={modalPanel} onClick={e => e.stopPropagation()}>
@@ -60,75 +69,58 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
               <option value="servico">Serviço</option><option value="instrucao">Instrução</option><option value="manutencao">Manutenção</option><option value="outro">Outro</option>
             </select>
           </div>
-          <div className={field}><label className={lbl}>Título</label><input className={inp} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
+          <div className={field}><label className={lbl}>Título</label>
+            <input className={inp} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+          </div>
           <div className={field}><label className={lbl}>Descrição</label>
             <textarea className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] resize-y min-h-[60px]" rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className={field}><label className={lbl}>Vencimento</label><DateInput value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} /></div>
+            <div className={field}><label className={lbl}>Vencimento</label>
+              <DateInput value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} />
+            </div>
             <div className={field}><label className={lbl}>Valor</label>
               <div className="flex rounded-md border border-line overflow-hidden focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus)]">
                 <span className="flex items-center px-2.5 text-[13px] text-ink-3 bg-bg-sunk border-r border-line">R$</span>
-                <input type="number" step="0.01" className="flex-1 px-2.5 py-[7px] border-0 bg-bg-elev text-ink text-[13px] font-mono outline-none" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+                <input inputMode="numeric" className="flex-1 px-2.5 py-[7px] border-0 bg-bg-elev text-ink text-[13px] font-mono outline-none" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: maskCurrency(e.target.value) }))} />
               </div>
             </div>
           </div>
-          <div className="border-t border-line pt-3.5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Recebedor</div>
+
+          <div className="border-t border-line pt-3.5 flex flex-col gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Recebedor</div>
             <div className={field}>
-              <select className={sel} value={form.payer_type} onChange={e => setForm(f => ({ ...f, payer_type: e.target.value }))}>
+              <select className={sel} value={form.payer_type} onChange={e => setForm(f => ({ ...f, payer_type: e.target.value, payer_id: '' }))}>
                 <option value="none">Nenhum</option>
-                <option value="customer">Cliente</option>
-                <option value="company">Empresa</option>
+                <option value="customer">Pessoa</option>
                 <option value="instructor">Instrutor</option>
                 <option value="partner">Sócio</option>
                 <option value="employee">Funcionário</option>
+                <option value="company">Empresa</option>
+              </select>
+            </div>
+            {form.payer_type !== 'none' && (
+              <div className={field}>
+                <select className={sel} value={form.payer_id} onChange={e => setForm(f => ({ ...f, payer_id: e.target.value }))}>
+                  <option value="">Selecione</option>
+                  {payerList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-line pt-3.5 flex flex-col gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Aeronave</div>
+            <div className={field}>
+              <select className={sel} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
+                <option value="">Sem aeronave</option>
+                {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
               </select>
             </div>
           </div>
-          <div className="border-t border-line pt-3.5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Associações</div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className={field}><label className={lbl}>Cliente</label>
-                <select className={sel} value={form.client_id} onChange={e => setForm(f => ({ ...f, client_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div className={field}><label className={lbl}>Empresa</label>
-                <select className={sel} value={form.company_id} onChange={e => setForm(f => ({ ...f, company_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div className={field}><label className={lbl}>Instrutor</label>
-                <select className={sel} value={form.instructor_id} onChange={e => setForm(f => ({ ...f, instructor_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {instructors.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                </select>
-              </div>
-              <div className={field}><label className={lbl}>Aeronave</label>
-                <select className={sel} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
-                </select>
-              </div>
-              <div className={field}><label className={lbl}>Sócio</label>
-                <select className={sel} value={form.partner_id} onChange={e => setForm(f => ({ ...f, partner_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {partners.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-              <div className={field}><label className={lbl}>Funcionário</label>
-                <select className={sel} value={form.employee_id} onChange={e => setForm(f => ({ ...f, employee_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {employees.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
-                </select>
-              </div>
-            </div>
-          </div>
-          <div className="border-t border-line pt-3.5">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-2.5">Recorrência</div>
+
+          <div className="border-t border-line pt-3.5 flex flex-col gap-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Recorrência</div>
             <div className="grid grid-cols-2 gap-3">
               <div className={field}><label className={lbl}>Repetir</label>
                 <select className={sel} value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))}>
@@ -143,7 +135,7 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
               )}
             </div>
             {form.recurrence && (
-              <div className="text-[12px] text-ink-3 mt-1">
+              <div className="text-[12px] text-ink-3">
                 Serão criados <strong>{form.occurrences}</strong> títulos com vencimentos {form.recurrence === 'monthly' ? 'mensais' : form.recurrence === 'weekly' ? 'semanais' : 'anuais'}, a partir da data informada.
               </div>
             )}
@@ -152,16 +144,20 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
         <div className={modalFoot}>
           <button className={btnCancel} onClick={onClose}>Cancelar</button>
           <button className={btnPrimary} onClick={() => onSave({
-            title: form.title, description: form.description || undefined, amount: parseFloat(form.amount),
-            due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined, product: form.product,
-            client_id: form.client_id ? Number(form.client_id) : undefined,
-            company_id: form.company_id ? Number(form.company_id) : undefined,
-            instructor_id: form.instructor_id ? Number(form.instructor_id) : undefined,
-            plane_id: form.plane_id ? Number(form.plane_id) : undefined,
-            partner_id: form.partner_id ? Number(form.partner_id) : undefined,
-            employee_id: form.employee_id ? Number(form.employee_id) : undefined,
             payer_type: form.payer_type,
-            recurrence: form.recurrence || undefined, occurrences: form.recurrence ? Number(form.occurrences) : undefined,
+            ...(form.payer_type === 'customer' && form.payer_id && { client_id: Number(form.payer_id) }),
+            ...(form.payer_type === 'company' && form.payer_id && { company_id: Number(form.payer_id) }),
+            ...(form.payer_type === 'instructor' && form.payer_id && { instructor_id: Number(form.payer_id) }),
+            ...(form.payer_type === 'partner' && form.payer_id && { partner_id: Number(form.payer_id) }),
+            ...(form.payer_type === 'employee' && form.payer_id && { employee_id: Number(form.payer_id) }),
+            plane_id: form.plane_id ? Number(form.plane_id) : undefined,
+            title: form.title,
+            description: form.description || undefined,
+            amount: parseCurrency(form.amount),
+            due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined,
+            product: form.product,
+            recurrence: form.recurrence || undefined,
+            occurrences: form.recurrence ? Number(form.occurrences) : undefined,
           })}>
             <CheckIcon size={14} /> Criar título
           </button>
@@ -177,6 +173,8 @@ export default function Payables() {
   const { can } = useAuth();
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
+  const [pendingFrom, setPendingFrom] = useState('');
+  const [pendingTo, setPendingTo] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
@@ -197,37 +195,40 @@ export default function Payables() {
   const customers = customersData?.data ?? [];
   const { data: planesData } = useQuery({ queryKey: ['planes', 1], queryFn: () => getPlanes(1, 9999) });
   const planes: Plane[] = planesData?.data ?? [];
+
   const { data: instructorData } = useQuery({ queryKey: ['customers', '', 'instrutor', 1], queryFn: () => getCustomers(undefined, 'instrutor', 1, 9999) });
-  const instructors: InstructorOption[] = (instructorData?.data ?? [])
+  const instructors: NamedOption[] = (instructorData?.data ?? [])
     .filter((c: Customer) => c.instructors?.length > 0)
     .map((c: Customer) => ({ id: c.instructors[0].id, name: c.name }));
 
   const { data: partnerData } = useQuery({ queryKey: ['customers', '', 'socio', 1], queryFn: () => getCustomers(undefined, 'socio', 1, 9999) });
-  const partners = (partnerData?.data ?? [])
+  const partners: NamedOption[] = (partnerData?.data ?? [])
     .filter((c: Customer) => c.partners?.length > 0)
     .map((c: Customer) => ({ id: c.partners[0].id, name: c.name }));
 
   const { data: employeeData } = useQuery({ queryKey: ['customers', '', 'funcionario', 1], queryFn: () => getCustomers(undefined, 'funcionario', 1, 9999) });
-  const employees = (employeeData?.data ?? [])
+  const employees: NamedOption[] = (employeeData?.data ?? [])
     .filter((c: Customer) => (c.employees ?? []).length > 0)
     .map((c: Customer) => ({ id: c.employees![0].id, name: c.name }));
 
   const { data: companiesData } = useQuery({ queryKey: ['companies', '', 1], queryFn: () => getCompanies(undefined, 1, 9999) });
   const companies: Company[] = companiesData?.data ?? [];
 
-  const deleteMut = useMutation({ mutationFn: deletePayable, onSuccess: () => qc.invalidateQueries({ queryKey: ['payables'] }) });
+  const deleteMut = useMutation({ mutationFn: deletePayable, onSuccess: () => qc.invalidateQueries({ queryKey: ['payables'] }), onError: (e: unknown) => toast.error(extractErrorMessage(e)) });
   const bulkDeleteMut = useMutation({
     mutationFn: (ids: number[]) => Promise.all(ids.map(id => deletePayable(id))),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payables'] }); setSelected(new Set()); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const payMut = useMutation({
     mutationFn: (d: unknown) => registerPayablePayment(payPayable!.id, d as { amount: number; method?: string; paid_at?: string }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payables'] }); setPayPayable(null); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
   const menuPayable = menuState ? payables.find(p => p.id === menuState.id) ?? null : null;
 
-  const { data: kpiData } = useQuery({ queryKey: ['payables', 'kpi'], queryFn: () => getPayables(undefined, 1, 9999) });
+  const { data: kpiData } = useQuery({ queryKey: ['payables', 'kpi', dateFrom, dateTo], queryFn: () => getPayables(undefined, 1, 9999, undefined, undefined, dateFrom || undefined, dateTo || undefined) });
   const allP = kpiData?.data ?? [];
   const total = allP.reduce((a, p) => a + Number(p.amount), 0);
   const paid = allP.reduce((a, p) => a + Number(p.amount_paid), 0);
@@ -238,39 +239,50 @@ export default function Payables() {
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(allIds));
   const toggleOne = (id: number) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const TABS_P = [['all', 'Todos'], ['open', 'A pagar'], ['partial', 'Parcial'], ['closed', 'Pagos']] as const;
+  const TABS_P = [['all', 'Todos'], ['open', 'A pagar'], ['partial', 'Parcial'], ['closed', 'Pagos'], ['overdue', 'Vencidos']] as const;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">Contas a pagar</h1>
+          <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">Títulos a pagar</h1>
           <p className="text-[13px] text-ink-3 mt-1 m-0">Títulos a pagar a instrutores e fornecedores</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <button className={btnCancel} onClick={() => downloadReport(`/payables/export?status=${tab === 'all' ? '' : tab}&search=${search}&date_from=${dateFrom}&date_to=${dateTo}`, 'contas-a-pagar.xlsx')}>
-            <FileSpreadsheet size={14} /> Relatório
-          </button>
-          {can(PERM.PAYABLES.CREATE) && <button className={btnPrimary} onClick={() => setNewModal(true)}><Plus size={14} /> Novo título</button>}
+{can(PERM.PAYABLES.CREATE) && <button className={btnPrimary} onClick={() => setNewModal(true)}><Plus size={14} /> Novo título</button>}
         </div>
+      </div>
+
+      <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-4">
+      <div className="flex items-center gap-3 justify-end">
+        <span className={lbl + ' whitespace-nowrap'}>Criação</span>
+        <div className="flex items-center gap-2">
+          <span className={lbl + ' whitespace-nowrap'}>de</span>
+          <DateInput value={pendingFrom} onChange={setPendingFrom} />
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={lbl + ' whitespace-nowrap'}>Até</span>
+          <DateInput value={pendingTo} onChange={setPendingTo} />
+        </div>
+        <button className={btnPrimary} onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); }}>Aplicar</button>
       </div>
 
       <div className="grid grid-cols-4 gap-3">
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Total</div>
+          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor total</div>
           <div className="text-[24px] font-bold tracking-tight font-mono"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Já pago</div>
-          <div className="text-[24px] font-bold tracking-tight font-mono text-success"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(paid)}</div>
+          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor pago</div>
+          <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: paid > 0 ? 'var(--success)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(paid)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">A pagar</div>
-          <div className="text-[24px] font-bold tracking-tight font-mono"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total - paid)}</div>
+          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor a pagar</div>
+          <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: (total - paid) > 0 ? 'var(--warn)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total - paid)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Vencidos</div>
-          <div className="text-[24px] font-bold tracking-tight font-mono text-danger"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(overdue)}</div>
+          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor vencido</div>
+          <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: overdue > 0 ? 'var(--danger)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(overdue)}</div>
         </div>
       </div>
 
@@ -286,13 +298,10 @@ export default function Payables() {
             ))}
           </div>
           <div className="flex-1" />
-          <FilterPopover activeCount={[dateFrom, dateTo, search].filter(Boolean).length} onClear={() => { setDateFrom(''); setDateTo(''); setSearch(''); }}>
-            <div className={field}><label className={lbl}>A partir de</label><DateInput value={dateFrom} onChange={setDateFrom} /></div>
-            <div className={field}><label className={lbl}>Até</label><DateInput value={dateTo} onChange={setDateTo} /></div>
-            <div className={field}><label className={lbl}>Título</label>
-              <input className={inp} placeholder="Buscar por título…" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-            </div>
-          </FilterPopover>
+          <div className="relative flex items-center">
+            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input className="pl-[30px] pr-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-[13px] text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] min-w-[260px]" placeholder="Buscar por título ou recebedor" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
+          </div>
         </div>
 
         {isLoading ? <div className="py-8 text-center text-[13px] text-ink-3">Carregando…</div> : (
@@ -312,13 +321,15 @@ export default function Payables() {
               <table className="w-full border-collapse text-[13px]">
                 <thead>
                   <tr>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line w-9"><input type="checkbox" checked={allSelected} onChange={toggleAll} /></th>
+                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line w-9"><Checkbox checked={allSelected} onChange={toggleAll} /></th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">ID</th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Título</th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Tipo</th>
+                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Recebedor</th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Vencimento</th>
                     <th className="px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Valor</th>
                     <th className="px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Pago</th>
+                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line w-32">Progresso</th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Status</th>
                     <th className="px-3.5 py-2.5 bg-bg border-b border-line w-10"></th>
                   </tr>
@@ -326,13 +337,28 @@ export default function Payables() {
                 <tbody>
                   {payables.map(p => (
                     <tr key={p.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/payables/${p.id}`)}>
-                      <td className="px-3.5 py-2.5 border-b border-line w-9" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} /></td>
+                      <td className="px-3.5 py-2.5 border-b border-line w-9" onClick={e => e.stopPropagation()}><Checkbox checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} /></td>
                       <td className="px-3.5 py-2.5 border-b border-line font-mono text-[11.5px]">{p.id}</td>
                       <td className="px-3.5 py-2.5 border-b border-line font-medium text-ink">{p.title}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line text-ink-3">{p.product ?? '—'}</td>
+                      <td className="px-3.5 py-2.5 border-b border-line">{p.product ? <span className="inline-flex items-center px-1.5 py-px rounded-[3px] text-[11px] font-medium bg-bg-sunk text-ink-3 border border-line">{p.product}</span> : '—'}</td>
+                      <td className="px-3.5 py-2.5 border-b border-line text-[12px] text-ink-3">{p.customer?.name ?? p.company?.name ?? p.instructor?.customer?.name ?? '—'}</td>
                       <td className="px-3.5 py-2.5 border-b border-line font-mono text-[12px]">{p.due_date ? formatDate(p.due_date) : '—'}</td>
                       <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">R$ {formatBRL(p.amount)}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">{Number(p.amount_paid) > 0 ? `R$ ${formatBRL(p.amount_paid)}` : '—'}</td>
+                      <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">{`R$ ${formatBRL(p.amount_paid)}`}</td>
+                      <td className="px-3.5 py-2.5 border-b border-line w-32">
+                        {(() => {
+                          const pct = Number(p.amount) > 0 ? Math.min(100, (Number(p.amount_paid) / Number(p.amount)) * 100) : 0;
+                          const color = p.status === 'closed' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--line)';
+                          return (
+                            <div className="flex items-center gap-1.5">
+                              <div className="flex-1 h-1.5 rounded-full bg-bg-sunk overflow-hidden">
+                                <div style={{ width: `${pct}%`, background: color, height: '100%', borderRadius: 9999, transition: 'width 0.3s' }} />
+                              </div>
+                              <span className="text-[11px] font-mono text-ink-3 w-8 text-right">{Math.round(pct)}%</span>
+                            </div>
+                          );
+                        })()}
+                      </td>
                       <td className="px-3.5 py-2.5 border-b border-line">
                         <Badge variant={P_STATUS_BADGE[p.status] as 'success' | 'warn' | 'danger' | 'accent' | 'default' ?? 'default'}>{P_STATUS_LABEL[p.status] ?? p.status}</Badge>
                       </td>
@@ -341,7 +367,7 @@ export default function Payables() {
                       </td>
                     </tr>
                   ))}
-                  {payables.length === 0 && <tr><td colSpan={9} className="px-3.5 py-8 text-center text-ink-3">Nenhum título encontrado.</td></tr>}
+                  {payables.length === 0 && <tr><td colSpan={11} className="px-3.5 py-8 text-center text-ink-3">Nenhum título encontrado.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -349,16 +375,17 @@ export default function Payables() {
           </>
         )}
       </div>
+      </div>
 
       {menuState && menuPayable && (
         <RowMenu top={menuState.top} right={menuState.right} onClose={() => setMenuState(null)}>
           <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => { setMenuState(null); navigate(`/payables/${menuPayable.id}`); }}><Eye size={14} /> Ver detalhes</button>
           {menuPayable.status !== 'closed' && can(PERM.PAYABLES.UPDATE) && <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => setPayPayable(menuPayable)}><CheckIcon size={14} /> Pagar</button>}
-          {can(PERM.PAYABLES.DELETE) && <><RowMenuSep /><button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-danger rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-danger-soft text-left" onClick={() => deleteMut.mutate(menuPayable.id)}><Trash2 size={14} /> Deletar</button></>}
+          {can(PERM.PAYABLES.DELETE) && <><RowMenuSep /><button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-danger rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-danger-soft text-left" onClick={() => deleteMut.mutate(menuPayable.id)}><Trash2 size={14} /> Remover</button></>}
         </RowMenu>
       )}
 
-      {newModal && <NewPayableModal customers={customers} instructors={instructors} partners={partners} employees={employees} planes={planes} companies={companies} onClose={() => setNewModal(false)} onSave={d => createPayable(d).then(() => { qc.invalidateQueries({ queryKey: ['payables'] }); setNewModal(false); })} />}
+      {newModal && <NewPayableModal customers={customers} instructors={instructors} partners={partners} employees={employees} planes={planes} companies={companies} onClose={() => setNewModal(false)} onSave={d => createPayable(d).then(() => { qc.invalidateQueries({ queryKey: ['payables'] }); setNewModal(false); }).catch((e: unknown) => toast.error(extractErrorMessage(e)))} />}
       {payPayable && <PayModal payable={payPayable} onClose={() => setPayPayable(null)} onSave={d => payMut.mutate(d)} />}
     </div>
   );
