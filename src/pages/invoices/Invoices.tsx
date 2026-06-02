@@ -10,6 +10,7 @@ import { formatBRL, formatDate, receivableStatus, BILL_STATUS_LABEL, BILL_STATUS
 import type { Bill, Customer, Receivable } from '../../types';
 import RowMenu, { RowMenuSep } from '../../components/RowMenu';
 import Badge from '../../components/ui/Badge';
+import Checkbox from '../../components/ui/Checkbox';
 import Pagination from '../../components/Pagination';
 import { toast, extractErrorMessage } from '../../utils/toast';
 
@@ -27,12 +28,13 @@ const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] b
 
 function NewInvoiceModal({ onClose, onSave }: {
   onClose: () => void;
-  onSave: (d: { customer_id: number; items: { receivable_id: number; amount: number }[]; payment_method?: string }) => void;
+  onSave: (d: { customer_id: number; items: { receivable_id: number; amount: number }[]; payment_method?: string; due_date?: string }) => void;
 }) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [selected, setSelected] = useState<Record<number, number>>({});
   const [method, setMethod] = useState('PIX');
+  const [dueDate, setDueDate] = useState('');
 
   const { data: customersData } = useQuery({ queryKey: ['customers', '', 'all', 1], queryFn: () => getCustomers(undefined, undefined, 1, 9999) });
   const customers = customersData?.data ?? [];
@@ -111,7 +113,7 @@ function NewInvoiceModal({ onClose, onSave }: {
                       const checked = r.id in selected;
                       return (
                         <tr key={r.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => toggleRec(r)}>
-                          <td className="px-3.5 py-2.5 border-b border-line w-9"><input type="checkbox" checked={checked} onChange={() => toggleRec(r)} onClick={e => e.stopPropagation()} /></td>
+                          <td className="px-3.5 py-2.5 border-b border-line w-9"><Checkbox checked={checked} onChange={() => toggleRec(r)} onClick={e => e.stopPropagation()} /></td>
                           <td className="px-3.5 py-2.5 border-b border-line">{r.title}</td>
                           <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">R$ {formatBRL(r.total_amount)}</td>
                           <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">{Number(r.amount_received) > 0 ? `R$ ${formatBRL(r.amount_received)}` : '—'}</td>
@@ -142,11 +144,17 @@ function NewInvoiceModal({ onClose, onSave }: {
         {step === 3 && (
           <>
             <div className="p-[18px] overflow-y-auto flex-1 flex flex-col gap-4">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-medium text-ink-2">Forma de pagamento</label>
-                <select className={sel} value={method} onChange={e => setMethod(e.target.value)}>
-                  <option>PIX</option><option>Dinheiro</option><option>Transferência</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Cheque</option>
-                </select>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">Forma de pagamento</label>
+                  <select className={sel} value={method} onChange={e => setMethod(e.target.value)}>
+                    <option>PIX</option><option>Dinheiro</option><option>Transferência</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Cheque</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">Vencimento <span className="text-ink-3 font-normal">(opcional)</span></label>
+                  <DateInput value={dueDate} onChange={setDueDate} />
+                </div>
               </div>
               <div className="flex items-center justify-between px-3 py-2.5 bg-bg-sunk border border-line rounded-lg">
                 <span className="text-[12px] text-ink-3 font-medium">Total da fatura</span>
@@ -155,7 +163,7 @@ function NewInvoiceModal({ onClose, onSave }: {
             </div>
             <div className={modalFoot}>
               <button className={btnCancel} onClick={() => setStep(2)}><ChevronLeft size={14} /> Voltar</button>
-              <button className={btnPrimary} onClick={() => onSave({ customer_id: selectedCustomer!.id, payment_method: method, items: Object.entries(selected).map(([id, amount]) => ({ receivable_id: Number(id), amount })) })}>
+              <button className={btnPrimary} onClick={() => onSave({ customer_id: selectedCustomer!.id, payment_method: method, ...(dueDate && { due_date: dueDate }), items: Object.entries(selected).map(([id, amount]) => ({ receivable_id: Number(id), amount })) })}>
                 <CheckIcon size={14} /> Gerar fatura
               </button>
             </div>
@@ -249,7 +257,7 @@ export default function Invoices() {
               <table className="w-full border-collapse text-[13px]">
                 <thead>
                   <tr>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line w-9"><input type="checkbox" checked={allSelected} onChange={toggleAll} /></th>
+                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line w-9"><Checkbox checked={allSelected} onChange={toggleAll} /></th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">ID</th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Cliente</th>
                     <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Criado em</th>
@@ -262,7 +270,7 @@ export default function Invoices() {
                 <tbody>
                   {bills.map((b: Bill) => (
                     <tr key={b.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/invoices/${b.id}`)}>
-                      <td className="px-3.5 py-2.5 border-b border-line w-9" onClick={e => e.stopPropagation()}><input type="checkbox" checked={selected.has(b.id)} onChange={() => toggleOne(b.id)} /></td>
+                      <td className="px-3.5 py-2.5 border-b border-line w-9" onClick={e => e.stopPropagation()}><Checkbox checked={selected.has(b.id)} onChange={() => toggleOne(b.id)} /></td>
                       <td className="px-3.5 py-2.5 border-b border-line font-mono text-[11.5px]">{b.id}</td>
                       <td className="px-3.5 py-2.5 border-b border-line font-medium text-ink">{b.customer?.name ?? `${b.customer_id}`}</td>
                       <td className="px-3.5 py-2.5 border-b border-line font-mono text-[12px]">{formatDate(b.issue_date)}</td>
