@@ -199,6 +199,9 @@ export interface Bill {
   issue_date: string;
   due_date?: string;
   paid_at?: string | null;
+  status: 'open' | 'pending_cnab' | 'paid' | 'cancelled';
+  payment_source?: 'cnab' | 'manual' | null;
+  payment_method?: string | null;
   nota_fiscal_path?: string | null;
   customer?: Customer;
   receivable_payments?: BillItem[];
