@@ -22,6 +22,7 @@ export default function Settings() {
   const [sicoobContaDv, setSicoobContaDv] = useState('');
   const [sicoobCarteira, setSicoobCarteira] = useState('');
   const [sicoobModalidade, setSicoobModalidade] = useState('');
+  const [sicoobJuros, setSicoobJuros] = useState(0);
 
   useEffect(() => {
     if (data) {
@@ -38,6 +39,7 @@ export default function Settings() {
       setSicoobContaDv(data.sicoob_conta_dv ?? '');
       setSicoobCarteira(data.sicoob_carteira ?? '');
       setSicoobModalidade(data.sicoob_modalidade ?? '');
+      setSicoobJuros(Number(data.sicoob_juros ?? 0));
     }
   }, [data]);
 
@@ -57,20 +59,6 @@ export default function Settings() {
       glider_initial_minutes: gliderMinutes,
       glider_initial_value: gliderInitialValue,
       glider_minute_value: gliderMinuteValue,
-    });
-  }
-
-  const sicoobMut = useMutation({
-    mutationFn: upsertSettings,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['settings'] });
-      toast.success('Configurações Sicoob salvas');
-    },
-    onError: () => toast.error('Erro ao salvar configurações Sicoob'),
-  });
-
-  function handleSaveSicoob() {
-    sicoobMut.mutate({
       sicoob_cnpj: sicoobCnpj || undefined,
       sicoob_nome_empresa: sicoobNome || undefined,
       sicoob_cooperativa_prefix: sicoobPrefix || undefined,
@@ -79,6 +67,7 @@ export default function Settings() {
       sicoob_conta_dv: sicoobContaDv || undefined,
       sicoob_carteira: sicoobCarteira || undefined,
       sicoob_modalidade: sicoobModalidade || undefined,
+      sicoob_juros: sicoobJuros,
     });
   }
 
@@ -182,16 +171,21 @@ export default function Settings() {
                   />
                 </div>
               </div>
-            </div>
-            <div className="flex justify-end mt-5">
-              <button
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90 disabled:opacity-60"
-                onClick={handleSaveSicoob}
-                disabled={sicoobMut.isPending}
-              >
-                <Check size={14} />
-                {sicoobMut.isPending ? 'Salvando…' : 'Salvar Sicoob'}
-              </button>
+              <div className="grid grid-cols-4 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-medium text-ink-2">Taxa de juros % mensal</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="100"
+                    className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]"
+                    value={sicoobJuros}
+                    onChange={e => setSicoobJuros(parseFloat(e.target.value) || 0)}
+                    placeholder="1.00"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

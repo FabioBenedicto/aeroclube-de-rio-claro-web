@@ -236,4 +236,5 @@ export interface Settings {
   sicoob_cnpj?: string;
   sicoob_nome_empresa?: string;
   sicoob_remessa_sequence?: number;
+  sicoob_juros?: number;
 }
