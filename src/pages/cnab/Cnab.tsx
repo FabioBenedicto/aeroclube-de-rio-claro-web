@@ -1,32 +1,24 @@
 import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Landmark, Download, Upload, Plus, X } from 'lucide-react';
+import { Download, Upload, X } from 'lucide-react';
 import {
   getBillsPending,
-  createBoletoBill,
   generateRemessa,
   processRetorno,
   type RetornoResult,
 } from '../../api/cnab';
-import { getCustomers } from '../../api/customers';
 import { formatBRL, formatDate } from '../../utils/format';
 import DateInput from '../../components/DateInput';
 import Pagination from '../../components/Pagination';
+import Checkbox from '../../components/ui/Checkbox';
 import { toast, extractErrorMessage } from '../../utils/toast';
-import type { Bill, Customer } from '../../types';
+import type { Bill } from '../../types';
 
-const inp = 'w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]';
 const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90 disabled:opacity-60';
 const btnSecondary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink disabled:opacity-60';
-const sel = 'w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] cursor-pointer';
 
 export default function Cnab() {
   const qc = useQueryClient();
-
-  // — Boleto form state —
-  const [bCustomerId, setBCustomerId] = useState<number | ''>('');
-  const [bAmount, setBAmount] = useState('');
-  const [bDueDate, setBDueDate] = useState('');
 
   // — Remessa filter/selection state —
   const [page, setPage] = useState(1);
@@ -41,12 +33,6 @@ export default function Cnab() {
   const [retornoResult, setRetornoResult] = useState<RetornoResult | null>(null);
 
   // — Queries —
-  const { data: customersData } = useQuery({
-    queryKey: ['customers-all'],
-    queryFn: () => getCustomers(undefined, undefined, 1, 9999),
-  });
-  const customers: Customer[] = customersData?.data ?? [];
-
   const { data: billsData, isLoading } = useQuery({
     queryKey: ['bills-pending', page, appliedFrom, appliedTo],
     queryFn: () => getBillsPending(page, 20, appliedFrom || undefined, appliedTo || undefined),
@@ -54,18 +40,6 @@ export default function Cnab() {
   const bills: Bill[] = billsData?.data ?? [];
 
   // — Mutations —
-  const boletoMut = useMutation({
-    mutationFn: createBoletoBill,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['bills-pending'] });
-      setBCustomerId('');
-      setBAmount('');
-      setBDueDate('');
-      toast.success('Boleto criado com sucesso');
-    },
-    onError: (e) => toast.error(extractErrorMessage(e)),
-  });
-
   const remessaMut = useMutation({
     mutationFn: generateRemessa,
     onSuccess: (blob) => {
@@ -92,15 +66,6 @@ export default function Cnab() {
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
-
-  function handleBoletoSave() {
-    if (!bCustomerId || !bAmount || !bDueDate) return;
-    boletoMut.mutate({
-      customer_id: Number(bCustomerId),
-      total_amount: parseFloat(bAmount),
-      due_date: bDueDate,
-    });
-  }
 
   function toggleAll() {
     if (selected.size === bills.length && bills.length > 0) {
@@ -133,62 +98,15 @@ export default function Cnab() {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0 flex items-center gap-2">
-            <Landmark size={20} className="text-accent" />
-            CNAB 240 — Sicoob
-          </h1>
+          <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">Sicoob CNAB 240</h1>
           <p className="text-[13px] text-ink-3 mt-1 m-0">Remessa e retorno de boletos</p>
-        </div>
-      </div>
-
-      {/* Bloco A — Criar Boleto */}
-      <div className="bg-bg-elev border border-line rounded-lg p-5">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-4">Criar Boleto</div>
-        <div className="flex items-end gap-3 flex-wrap">
-          <div className="flex flex-col gap-1.5 min-w-[220px] flex-1">
-            <label className="text-[12px] font-medium text-ink-2">Cliente</label>
-            <select
-              className={sel}
-              value={bCustomerId}
-              onChange={e => setBCustomerId(e.target.value ? Number(e.target.value) : '')}
-            >
-              <option value="">Selecione o cliente</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5 w-[140px]">
-            <label className="text-[12px] font-medium text-ink-2">Valor (R$)</label>
-            <input
-              className={inp}
-              type="number"
-              min="0.01"
-              step="0.01"
-              placeholder="0,00"
-              value={bAmount}
-              onChange={e => setBAmount(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5 w-[160px]">
-            <label className="text-[12px] font-medium text-ink-2">Vencimento</label>
-            <DateInput value={bDueDate} onChange={setBDueDate} />
-          </div>
-          <button
-            className={btnPrimary}
-            disabled={!bCustomerId || !bAmount || !bDueDate || boletoMut.isPending}
-            onClick={handleBoletoSave}
-          >
-            <Plus size={14} />
-            {boletoMut.isPending ? 'Criando…' : 'Criar Boleto'}
-          </button>
         </div>
       </div>
 
       {/* Bloco B — Remessa */}
       <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Faturas Pendentes</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Faturas em aberto</div>
           <div className="flex items-center gap-2">
             <DateInput value={dueFrom} onChange={setDueFrom} className="w-[130px]" />
             <span className="text-[12px] text-ink-3">até</span>
@@ -227,27 +145,26 @@ export default function Cnab() {
             <thead>
               <tr>
                 <th className="px-3.5 py-2.5 text-left bg-bg border-b border-line w-9">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={bills.length > 0 && selected.size === bills.length}
                     onChange={toggleAll}
-                    className="cursor-pointer"
                   />
                 </th>
                 <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">ID</th>
                 <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Cliente</th>
                 <th className="px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Valor</th>
                 <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Vencimento</th>
+                <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Status</th>
               </tr>
             </thead>
             <tbody>
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-3.5 py-8 text-center text-[13px] text-ink-3">Carregando…</td>
+                  <td colSpan={6} className="px-3.5 py-8 text-center text-[13px] text-ink-3">Carregando…</td>
                 </tr>
               ) : bills.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-3.5 py-8 text-center text-[13px] text-ink-3">Nenhuma fatura pendente</td>
+                  <td colSpan={6} className="px-3.5 py-8 text-center text-[13px] text-ink-3">Nenhuma fatura em aberto</td>
                 </tr>
               ) : bills.map(bill => (
                 <tr
@@ -256,18 +173,22 @@ export default function Cnab() {
                   onClick={() => toggleOne(bill.id)}
                 >
                   <td className="px-3.5 py-2.5">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       checked={selected.has(bill.id)}
                       onChange={() => toggleOne(bill.id)}
                       onClick={e => e.stopPropagation()}
-                      className="cursor-pointer"
                     />
                   </td>
                   <td className="px-3.5 py-2.5 font-mono text-ink-3">#{bill.id}</td>
                   <td className="px-3.5 py-2.5">{bill.customer?.name ?? '—'}</td>
                   <td className="px-3.5 py-2.5 text-right font-mono">R$ {formatBRL(bill.total_amount)}</td>
                   <td className="px-3.5 py-2.5 text-ink-3">{bill.due_date ? formatDate(bill.due_date) : '—'}</td>
+                  <td className="px-3.5 py-2.5">
+                    {bill.status === 'pending_cnab'
+                      ? <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-accent-soft text-accent-ink">Aguardando CNAB</span>
+                      : <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-warn-soft text-warn">Em aberto</span>
+                    }
+                  </td>
                 </tr>
               ))}
             </tbody>
