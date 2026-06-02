@@ -4,6 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { createUser, updateUser } from '../../api/users';
 import type { UserRecord } from '../../api/users';
 import { toast } from '../../utils/toast';
+import Checkbox from '../../components/ui/Checkbox';
 
 interface Props {
   mode: 'new' | 'edit';
@@ -15,13 +16,14 @@ interface Props {
 const inputCls = 'w-full px-3 py-1.5 text-[13px] bg-bg border border-line rounded-md text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] transition-[border-color,box-shadow] duration-100 placeholder:text-ink-3';
 
 const MODULES = [
-  { label: 'Contas a receber', view: 'receivables:view', create: 'receivables:create', update: 'receivables:update', delete: 'receivables:delete' },
-  { label: 'Contas a pagar',   view: 'payables:view',    create: 'payables:create',    update: 'payables:update',    delete: 'payables:delete'    },
+  { label: 'Títulos a receber', view: 'receivables:view', create: 'receivables:create', update: 'receivables:update', delete: 'receivables:delete' },
+  { label: 'Títulos a pagar',   view: 'payables:view',    create: 'payables:create',    update: 'payables:update',    delete: 'payables:delete'    },
   { label: 'Faturas',          view: 'invoices:view',    create: 'invoices:create',    update: 'invoices:update',    delete: 'invoices:delete'    },
   { label: 'Voos',             view: 'flights:view',     create: 'flights:create',     update: 'flights:update',     delete: 'flights:delete'     },
   { label: 'Aeronaves',        view: 'planes:view',      create: 'planes:create',      update: 'planes:update',      delete: 'planes:delete'      },
   { label: 'Pessoas',          view: 'customers:view',   create: 'customers:create',   update: 'customers:update',   delete: 'customers:delete'   },
   { label: 'Empresas',         view: 'companies:view',   create: 'companies:create',   update: 'companies:update',   delete: 'companies:delete'   },
+  { label: 'Relatórios',       view: 'reports:view',     create: '',                   update: '',                   delete: ''                   },
 ];
 
 export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
@@ -87,11 +89,11 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Nome</label>
-              <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" />
+              <input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">E-mail</label>
-              <input className={inputCls} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+              <input className={inputCls} type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
           </div>
 
@@ -100,7 +102,7 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
               <label className="text-[12px] font-medium text-ink-2">
                 Senha {mode === 'edit' && <span className="text-ink-3 font-normal">(vazio = não alterar)</span>}
               </label>
-              <input className={inputCls} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={mode === 'new' ? 'Mínimo 6 caracteres' : '••••••'} />
+              <input className={inputCls} type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Papel</label>
@@ -137,22 +139,18 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
                         <tr key={mod.label} className="border-b border-line last:border-0 hover:bg-bg-hover">
                           <td className="px-3 py-2">
                             <label className="flex items-center gap-2 cursor-pointer select-none">
-                              <input
-                                type="checkbox"
+                              <Checkbox
                                 checked={allChecked}
                                 onChange={() => toggleRow(mod)}
-                                className="accent-[var(--accent)]"
                               />
                               {mod.label}
                             </label>
                           </td>
                           {[mod.view, mod.create, mod.update, mod.delete].map((p) => (
                             <td key={p} className="text-center px-2 py-2">
-                              <input
-                                type="checkbox"
+                              <Checkbox
                                 checked={perms.has(p)}
                                 onChange={() => togglePerm(p)}
-                                className="accent-[var(--accent)]"
                               />
                             </td>
                           ))}
