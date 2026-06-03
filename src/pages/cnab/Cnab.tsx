@@ -225,8 +225,9 @@ export default function Cnab() {
         <p className="text-[13px] text-ink-3 mt-1 m-0">Remessa e retorno de boletos</p>
       </div>
 
+      <div className="flex gap-4 items-start">
       {/* Remessas */}
-      <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+      <div className="flex-1 min-w-0 bg-bg-elev border border-line rounded-lg overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Remessas</div>
           <button className={btnPrimary} onClick={() => setShowModal(true)}>
@@ -273,7 +274,7 @@ export default function Cnab() {
       </div>
 
       {/* Retornos */}
-      <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+      <div className="flex-1 min-w-0 bg-bg-elev border border-line rounded-lg overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Retornos</div>
           <button
@@ -349,6 +350,7 @@ export default function Cnab() {
         {retornosData && retornosData.totalPages > 1 && (
           <Pagination page={retornoPage} totalPages={retornosData.totalPages} total={retornosData.total} limit={20} onChange={setRetornoPage} />
         )}
+      </div>
       </div>
 
       {showModal && (
