@@ -1021,6 +1021,50 @@ export default function CustomerDetail() {
               </div>
               <Pagination page={tabPages.voos} totalPages={voosResult.totalPages} total={filteredVoos.length} limit={PAGE_SIZE} onChange={p => setTabPage('voos', p)} />
             </div>
+
+            <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+              <div className="px-5 py-3 border-b border-line text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Títulos a receber</div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead><tr><th className={thCls}>Título</th><th className={thCls}>Vencimento</th><th className={thNumCls}>Valor</th><th className={thNumCls}>Recebido</th><th className={thCls}>Status</th></tr></thead>
+                  <tbody>
+                    {recResult.rows.length === 0 && <tr><td colSpan={5} className="px-3.5 py-6 text-center text-ink-3">Nenhum título encontrado.</td></tr>}
+                    {recResult.rows.map(r => { const st = receivableStatus(r); return (
+                      <tr key={r.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/receivables/${r.id}`)}>
+                        <td className={`${tdCls} font-medium`}>{r.title}</td>
+                        <td className={`${tdCls} font-mono text-[12px]`}>{formatDate(r.expiration_date)}</td>
+                        <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(r.total_amount)}</td>
+                        <td className={`${tdCls} text-right font-mono`}>{Number(r.amount_received) > 0 ? `R$ ${formatBRL(r.amount_received)}` : '—'}</td>
+                        <td className={tdCls}><Badge variant={(STATUS_BADGE[st] ?? 'default') as BadgeVariant}>{STATUS_LABEL[st]}</Badge></td>
+                      </tr>
+                    ); })}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination page={tabPages.receber} totalPages={recResult.totalPages} total={filteredRec.length} limit={PAGE_SIZE} onChange={p => setTabPage('receber', p)} />
+            </div>
+
+            <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+              <div className="px-5 py-3 border-b border-line text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Títulos a pagar</div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead><tr><th className={thCls}>Título</th><th className={thCls}>Vencimento</th><th className={thNumCls}>Valor</th><th className={thNumCls}>Pago</th><th className={thCls}>Status</th></tr></thead>
+                  <tbody>
+                    {pagarResult.rows.length === 0 && <tr><td colSpan={5} className="px-3.5 py-6 text-center text-ink-3">Nenhum título encontrado.</td></tr>}
+                    {pagarResult.rows.map(p => (
+                      <tr key={p.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/payables/${p.id}`)}>
+                        <td className={`${tdCls} font-medium`}>{p.title}</td>
+                        <td className={`${tdCls} font-mono text-[12px]`}>{p.due_date ? formatDate(p.due_date) : '—'}</td>
+                        <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(p.amount)}</td>
+                        <td className={`${tdCls} text-right font-mono`}>{Number(p.amount_paid) > 0 ? `R$ ${formatBRL(p.amount_paid)}` : '—'}</td>
+                        <td className={tdCls}><Badge variant={(P_STATUS_BADGE[p.status] ?? 'default') as BadgeVariant}>{P_STATUS_LABEL[p.status] ?? p.status}</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination page={tabPages.pagar} totalPages={pagarResult.totalPages} total={filteredPagar.length} limit={PAGE_SIZE} onChange={p => setTabPage('pagar', p)} />
+            </div>
           </div>
         )}
 
@@ -1100,6 +1144,72 @@ export default function CustomerDetail() {
                 </table>
               </div>
               <Pagination page={tabPages.mensalidades} totalPages={mensalidadesResult.totalPages} total={mensalidadeRecs.length} limit={PAGE_SIZE} onChange={p => setTabPage('mensalidades', p)} />
+            </div>
+
+            <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+              <div className="px-5 py-3 border-b border-line text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Voos</div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead><tr><th className={thCls}>Tipo</th><th className={thCls}>Rota</th><th className={thCls}>Início</th><th className={thNumCls}>Horas</th><th className={thNumCls}>Valor</th></tr></thead>
+                  <tbody>
+                    {voosResult.rows.length === 0 && <tr><td colSpan={5} className="px-3.5 py-6 text-center text-ink-3">Nenhum voo encontrado.</td></tr>}
+                    {voosResult.rows.map(f => (
+                      <tr key={f.id} className="hover:bg-bg-hover">
+                        <td className={tdCls}>{f.type}</td>
+                        <td className={`${tdCls} font-mono text-[12px]`}>{f.origin} → {f.destination}</td>
+                        <td className={`${tdCls} font-mono text-[12px]`}>{formatDate(f.start_date)}</td>
+                        <td className={`${tdCls} text-right font-mono`}>{formatHours(f.total_hours)}</td>
+                        <td className={`${tdCls} text-right font-mono`}>{f.total_amount != null ? `R$ ${formatBRL(f.total_amount)}` : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination page={tabPages.voos} totalPages={voosResult.totalPages} total={filteredVoos.length} limit={PAGE_SIZE} onChange={p => setTabPage('voos', p)} />
+            </div>
+
+            <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+              <div className="px-5 py-3 border-b border-line text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Títulos a receber</div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead><tr><th className={thCls}>Título</th><th className={thCls}>Vencimento</th><th className={thNumCls}>Valor</th><th className={thNumCls}>Recebido</th><th className={thCls}>Status</th></tr></thead>
+                  <tbody>
+                    {recResult.rows.length === 0 && <tr><td colSpan={5} className="px-3.5 py-6 text-center text-ink-3">Nenhum título encontrado.</td></tr>}
+                    {recResult.rows.map(r => { const st = receivableStatus(r); return (
+                      <tr key={r.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/receivables/${r.id}`)}>
+                        <td className={`${tdCls} font-medium`}>{r.title}</td>
+                        <td className={`${tdCls} font-mono text-[12px]`}>{formatDate(r.expiration_date)}</td>
+                        <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(r.total_amount)}</td>
+                        <td className={`${tdCls} text-right font-mono`}>{Number(r.amount_received) > 0 ? `R$ ${formatBRL(r.amount_received)}` : '—'}</td>
+                        <td className={tdCls}><Badge variant={(STATUS_BADGE[st] ?? 'default') as BadgeVariant}>{STATUS_LABEL[st]}</Badge></td>
+                      </tr>
+                    ); })}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination page={tabPages.receber} totalPages={recResult.totalPages} total={filteredRec.length} limit={PAGE_SIZE} onChange={p => setTabPage('receber', p)} />
+            </div>
+
+            <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+              <div className="px-5 py-3 border-b border-line text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Títulos a pagar</div>
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-[13px]">
+                  <thead><tr><th className={thCls}>Título</th><th className={thCls}>Vencimento</th><th className={thNumCls}>Valor</th><th className={thNumCls}>Pago</th><th className={thCls}>Status</th></tr></thead>
+                  <tbody>
+                    {pagarResult.rows.length === 0 && <tr><td colSpan={5} className="px-3.5 py-6 text-center text-ink-3">Nenhum título encontrado.</td></tr>}
+                    {pagarResult.rows.map(p => (
+                      <tr key={p.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/payables/${p.id}`)}>
+                        <td className={`${tdCls} font-medium`}>{p.title}</td>
+                        <td className={`${tdCls} font-mono text-[12px]`}>{p.due_date ? formatDate(p.due_date) : '—'}</td>
+                        <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(p.amount)}</td>
+                        <td className={`${tdCls} text-right font-mono`}>{Number(p.amount_paid) > 0 ? `R$ ${formatBRL(p.amount_paid)}` : '—'}</td>
+                        <td className={tdCls}><Badge variant={(P_STATUS_BADGE[p.status] ?? 'default') as BadgeVariant}>{P_STATUS_LABEL[p.status] ?? p.status}</Badge></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination page={tabPages.pagar} totalPages={pagarResult.totalPages} total={filteredPagar.length} limit={PAGE_SIZE} onChange={p => setTabPage('pagar', p)} />
             </div>
           </div>
         )}
