@@ -240,3 +240,22 @@ export interface Settings {
   sicoob_juros?: number;
   sicoob_juros_prazo?: number;
 }
+
+export interface CnabRemessa {
+  id: number;
+  created_at: string;
+  sequence_number: number;
+  bill_count: number;
+  total_amount: number;
+  file_path: string;
+}
+
+export interface CnabRetorno {
+  id: number;
+  processed_at: string;
+  paid_count: number;
+  rejected_count: number;
+  paid_ids: number[];
+  rejected_ids: number[];
+  errors: string[];
+}
