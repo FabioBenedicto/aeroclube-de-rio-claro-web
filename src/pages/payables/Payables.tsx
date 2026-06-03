@@ -405,7 +405,7 @@ export default function Payables() {
                       <td className="px-3.5 py-2.5 border-b border-line w-9" onClick={e => e.stopPropagation()}><Checkbox checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} /></td>
                       <td className="px-3.5 py-2.5 border-b border-line font-mono text-[11.5px]">{p.id}</td>
                       <td className="px-3.5 py-2.5 border-b border-line font-medium text-ink">{p.title}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line">{(() => { const pt = PRODUCT_TYPES_PAY.find(t => t.value === p.product); return pt ? <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-[3px] text-[11px] font-medium bg-bg-sunk text-ink-3 border border-line"><pt.Icon size={11} />{pt.label}</span> : p.product ? <span className="inline-flex items-center px-1.5 py-px rounded-[3px] text-[11px] font-medium bg-bg-sunk text-ink-3 border border-line">{p.product}</span> : '—'; })()}</td>
+                      <td className="px-3.5 py-2.5 border-b border-line">{p.product ? <span className="inline-flex items-center px-1.5 py-px rounded-[3px] text-[11px] font-medium bg-bg-sunk text-ink-3 border border-line">{p.product}</span> : '—'}</td>
                       <td className="px-3.5 py-2.5 border-b border-line text-[12px] text-ink-3">{p.customer?.name ?? p.company?.name ?? p.instructor?.customer?.name ?? '—'}</td>
                       <td className="px-3.5 py-2.5 border-b border-line font-mono text-[12px]">{p.due_date ? formatDate(p.due_date) : '—'}</td>
                       <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">R$ {formatBRL(p.amount)}</td>

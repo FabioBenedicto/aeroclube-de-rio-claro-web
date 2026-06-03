@@ -453,7 +453,7 @@ export default function Receivables() {
                         <td className="px-3.5 py-2.5 border-b border-line w-9" onClick={e => e.stopPropagation()}><Checkbox checked={selected.has(r.id)} onChange={() => toggleOne(r.id)} /></td>
                         <td className="px-3.5 py-2.5 border-b border-line font-mono text-[11.5px]">{r.id}</td>
                         <td className="px-3.5 py-2.5 border-b border-line">{r.title}</td>
-                        <td className="px-3.5 py-2.5 border-b border-line">{(() => { const p = PRODUCT_TYPES_REC.find(t => t.value === r.product); return p ? <span className="inline-flex items-center gap-1 px-1.5 py-px rounded-[3px] text-[11px] font-medium bg-bg-sunk text-ink-3 border border-line"><p.Icon size={11} />{p.label}</span> : r.product ? <span className="inline-flex items-center px-1.5 py-px rounded-[3px] text-[11px] font-medium bg-bg-sunk text-ink-3 border border-line">{r.product}</span> : '—'; })()}</td>
+                        <td className="px-3.5 py-2.5 border-b border-line">{r.product ? <span className="inline-flex items-center px-1.5 py-px rounded-[3px] text-[11px] font-medium bg-bg-sunk text-ink-3 border border-line">{r.product}</span> : '—'}</td>
                         <td className="px-3.5 py-2.5 border-b border-line text-[12px] text-ink-3">{r.customer?.name ?? r.company?.name ?? r.instructor?.customer?.name ?? '—'}</td>
                         <td className="px-3.5 py-2.5 border-b border-line font-mono text-[12px]">{formatDate(r.expiration_date)}</td>
                         <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">R$ {formatBRL(r.total_amount)}</td>
