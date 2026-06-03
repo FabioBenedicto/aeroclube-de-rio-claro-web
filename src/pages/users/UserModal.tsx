@@ -141,21 +141,17 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
           {/* Step 2 — Dados */}
           {step === 2 && (
             <div className="flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-ink-2">Nome</label>
-                  <input className={inputCls} value={name} onChange={e => setName(e.target.value)} placeholder="Nome completo" />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[12px] font-medium text-ink-2">E-mail</label>
-                  <input className={inputCls} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
-                </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-medium text-ink-2">Nome</label>
+                <input className={inputCls} value={name} onChange={e => setName(e.target.value)} placeholder="Nome completo" />
               </div>
-              <div className="flex flex-col gap-1.5" style={{ maxWidth: '50%' }}>
-                <label className="text-[12px] font-medium text-ink-2">
-                  Senha {mode === 'edit' && <span className="text-ink-3 font-normal">(vazio = não alterar)</span>}
-                </label>
-                <input className={inputCls} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={mode === 'new' ? 'Mínimo 6 caracteres' : ''} />
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-medium text-ink-2">E-mail</label>
+                <input className={inputCls} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@exemplo.com" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-medium text-ink-2">Senha</label>
+                <input className={inputCls} type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={mode === 'new' ? 'Mínimo 6 caracteres' : '••••••'} />
               </div>
             </div>
           )}
