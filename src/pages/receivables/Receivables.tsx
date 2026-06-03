@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Plane as PlaneIcon, Calendar, Wrench, Package } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Plane as PlaneIcon, Calendar, Wrench, Package, BarChart3, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { getReceivables, createReceivable, updateReceivable, deleteReceivable, registerPayment } from '../../api/receivables';
 import Checkbox from '../../components/ui/Checkbox';
 import { getCustomers } from '../../api/customers';
@@ -379,19 +379,31 @@ export default function Receivables() {
 
       <div className="grid grid-cols-4 gap-3">
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor total</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[12px] text-ink-3 font-medium">Valor total</div>
+            <BarChart3 size={15} className="text-ink-4" />
+          </div>
           <div className="text-[24px] font-bold tracking-tight font-mono"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor recebido</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[12px] text-ink-3 font-medium">Valor recebido</div>
+            <CheckCircle2 size={15} className="text-success" />
+          </div>
           <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: received > 0 ? 'var(--success)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(received)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor a receber</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[12px] text-ink-3 font-medium">Valor a receber</div>
+            <Clock size={15} className="text-warn" />
+          </div>
           <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: (total - received) > 0 ? 'var(--warn)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total - received)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor vencido</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[12px] text-ink-3 font-medium">Valor vencido</div>
+            <AlertCircle size={15} className="text-danger" />
+          </div>
           <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: overdue > 0 ? 'var(--danger)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(overdue)}</div>
         </div>
       </div>

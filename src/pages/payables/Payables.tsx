@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MoreHorizontal, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Wrench, BookOpen, Settings, Package } from 'lucide-react';
+import { Plus, MoreHorizontal, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Wrench, BookOpen, Settings, Package, BarChart3, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { getPayables, createPayable, deletePayable, registerPayablePayment } from '../../api/payables';
 import Checkbox from '../../components/ui/Checkbox';
 import PayModal from '../../components/PayModal';
@@ -334,19 +334,31 @@ export default function Payables() {
 
       <div className="grid grid-cols-4 gap-3">
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor total</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[12px] text-ink-3 font-medium">Valor total</div>
+            <BarChart3 size={15} className="text-ink-4" />
+          </div>
           <div className="text-[24px] font-bold tracking-tight font-mono"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor pago</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[12px] text-ink-3 font-medium">Valor pago</div>
+            <CheckCircle2 size={15} className="text-success" />
+          </div>
           <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: paid > 0 ? 'var(--success)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(paid)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor a pagar</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[12px] text-ink-3 font-medium">Valor a pagar</div>
+            <Clock size={15} className="text-warn" />
+          </div>
           <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: (total - paid) > 0 ? 'var(--warn)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total - paid)}</div>
         </div>
         <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="text-[12px] text-ink-3 font-medium mb-1">Valor vencido</div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-[12px] text-ink-3 font-medium">Valor vencido</div>
+            <AlertCircle size={15} className="text-danger" />
+          </div>
           <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: overdue > 0 ? 'var(--danger)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(overdue)}</div>
         </div>
       </div>
