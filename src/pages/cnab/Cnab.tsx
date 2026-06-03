@@ -196,6 +196,8 @@ export default function Cnab() {
     mutationFn: processRetorno,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cnab-retornos'] });
+      qc.invalidateQueries({ queryKey: ['cnab-remessas'] });
+      qc.invalidateQueries({ queryKey: ['bills'] });
       toast.success('Retorno processado com sucesso');
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
