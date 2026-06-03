@@ -186,11 +186,9 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
                     <option value="monthly">Mensal</option><option value="weekly">Semanal</option><option value="yearly">Anual</option>
                   </select>
                 </div>
-                {form.recurrence && (
-                  <div className={field}><label className={lbl}>Nº de ocorrências</label>
-                    <input type="number" className={inp + ' font-mono'} min={2} max={60} value={form.occurrences} onChange={e => setForm(f => ({ ...f, occurrences: e.target.value }))} />
-                  </div>
-                )}
+                <div className={field}><label className={lbl}>Nº de ocorrências</label>
+                  <input type="number" className={inp + ' font-mono'} min={2} max={60} value={form.occurrences} onChange={e => setForm(f => ({ ...f, occurrences: e.target.value }))} disabled={!form.recurrence} />
+                </div>
               </div>
               {form.recurrence && (
                 <div className="text-[12px] text-ink-3">
