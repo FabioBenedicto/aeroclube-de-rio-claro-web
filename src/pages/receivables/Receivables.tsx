@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Plane, Calendar, Wrench, Package } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Plane as PlaneIcon, Calendar, Wrench, Package } from 'lucide-react';
 import { getReceivables, createReceivable, updateReceivable, deleteReceivable, registerPayment } from '../../api/receivables';
 import Checkbox from '../../components/ui/Checkbox';
 import { getCustomers } from '../../api/customers';
@@ -39,7 +39,7 @@ const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text
 const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 
 const PRODUCT_TYPES_REC = [
-  { value: 'voo',         label: 'Voo',         Icon: Plane },
+  { value: 'voo',         label: 'Voo',         Icon: PlaneIcon },
   { value: 'mensalidade', label: 'Mensalidade',  Icon: Calendar },
   { value: 'servico',     label: 'Serviço',      Icon: Wrench },
   { value: 'outro',       label: 'Outro',        Icon: Package },
