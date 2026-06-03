@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ChevronLeft, Plus, Check, X, Edit, Trash2, MoreHorizontal, Eye, ChevronRight, Plane as PlaneIcon, Timer, TrendingUp, ArrowDownLeft, Clock, ArrowUpRight, Hourglass, BarChart3, Calendar } from 'lucide-react';
-import { getCustomer, getCustomerCredits, getCustomers, updateCustomer } from '../../api/customers';
+import { getPerson, getPersonCredits, getPeoples, updatePerson } from '../../api/peoples';
 import { createReceivable, updateReceivable, deleteReceivable, registerPayment } from '../../api/receivables';
 import { getPayables, deletePayable, registerPayablePayment } from '../../api/payables';
 import { getFlights, createFlight, updateFlight, closeFlight, deleteFlight } from '../../api/flights';
@@ -19,7 +19,7 @@ import Badge from '../../components/ui/Badge';
 import Chip from '../../components/ui/Chip';
 import Checkbox from '../../components/ui/Checkbox';
 import type { Receivable, Flight, Bill, Payable } from '../../types';
-import CustomerModal from './CustomerModal';
+import PersonModal from './PersonModal';
 import { toast, extractErrorMessage } from '../../utils/toast';
 
 type MenuState = { id: number; top: number; right: number };
@@ -42,7 +42,7 @@ const rowMenuBtn = 'w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] tex
 const rowMenuBtnDanger = 'w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-danger rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-danger-soft text-left';
 
 
-function NewCreditModal({ customerId, onClose, onSuccess }: { customerId: number; onClose: () => void; onSuccess: () => void }) {
+function NewCreditModal({ personId, onClose, onSuccess }: { personId: number; onClose: () => void; onSuccess: () => void }) {
   const qc = useQueryClient();
   const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState({ title: '', description: '', expiration_date: '', amount: '' });
@@ -52,7 +52,7 @@ function NewCreditModal({ customerId, onClose, onSuccess }: { customerId: number
 
   const mut = useMutation({
     mutationFn: () => createReceivable({
-      client_id: customerId,
+      client_id: personId,
       payer_type: 'customer',
       title: form.title,
       product: 'credito',
@@ -61,7 +61,7 @@ function NewCreditModal({ customerId, onClose, onSuccess }: { customerId: number
       ...(form.expiration_date && { expiration_date: form.expiration_date }),
     }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['customer', customerId] });
+      qc.invalidateQueries({ queryKey: ['person', personId] });
       onSuccess();
     },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
@@ -137,7 +137,7 @@ function NewCreditModal({ customerId, onClose, onSuccess }: { customerId: number
   );
 }
 
-function NewTituloModal({ customerId, onClose, onSave, defaultProduct = 'voo' }: { customerId: number; onClose: () => void; onSave: (d: unknown) => void; defaultProduct?: string }) {
+function NewTituloModal({ personId, onClose, onSave, defaultProduct = 'voo' }: { personId: number; onClose: () => void; onSave: (d: unknown) => void; defaultProduct?: string }) {
   const [form, setForm] = useState({ title: '', product: defaultProduct, expiration_date: '', total_amount: '', plane_id: '', flight_id: '' });
   const { data: planesData } = useQuery({ queryKey: ['planes-all'], queryFn: () => getPlanes(1, 100) });
   const planes = planesData?.data ?? [];
@@ -193,7 +193,7 @@ function NewTituloModal({ customerId, onClose, onSave, defaultProduct = 'voo' }:
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
           <button className={btnCancel} onClick={onClose}>Cancelar</button>
           <button className={btnPrimary} onClick={() => onSave({
-            client_id: customerId,
+            client_id: personId,
             title: form.title,
             product: form.product,
             expiration_date: form.expiration_date || undefined,
@@ -335,7 +335,7 @@ function SettleTituloModal({ rec, creditBalance = 0, onClose, onSave }: { rec: R
   );
 }
 
-function NewFaturaModal({ receivables, customerId, onClose, onSave }: { receivables: Receivable[]; customerId: number; onClose: () => void; onSave: (d: { customer_id: number; items: { receivable_id: number; amount: number }[]; payment_method?: string; due_date?: string }) => void }) {
+function NewFaturaModal({ receivables, personId, onClose, onSave }: { receivables: Receivable[]; personId: number; onClose: () => void; onSave: (d: { customer_id: number; items: { receivable_id: number; amount: number }[]; payment_method?: string; due_date?: string }) => void }) {
   const [selected, setSelected] = useState<Record<number, number>>({});
   const [method, setMethod] = useState('PIX');
   const [dueDate, setDueDate] = useState('');
@@ -414,7 +414,7 @@ function NewFaturaModal({ receivables, customerId, onClose, onSave }: { receivab
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
           <button className={btnCancel} onClick={onClose}>Cancelar</button>
           <button className={btnPrimary} disabled={Object.keys(selected).length === 0 || total <= 0}
-            onClick={() => onSave({ customer_id: customerId, payment_method: method, ...(dueDate && { due_date: dueDate }), items: Object.entries(selected).map(([id, amount]) => ({ receivable_id: Number(id), amount })) })}>
+            onClick={() => onSave({ customer_id: personId, payment_method: method, ...(dueDate && { due_date: dueDate }), items: Object.entries(selected).map(([id, amount]) => ({ receivable_id: Number(id), amount })) })}>
             <Check size={14} /> Gerar fatura
           </button>
         </div>
@@ -423,46 +423,46 @@ function NewFaturaModal({ receivables, customerId, onClose, onSave }: { receivab
   );
 }
 
-export default function CustomerDetail() {
+export default function PersonDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const customerId = Number(id);
+  const personId = Number(id);
 
-  const { data: customer, isLoading } = useQuery({ queryKey: ['customer', customerId], queryFn: () => getCustomer(customerId) });
-  const { data: credits } = useQuery({ queryKey: ['credits', customerId], queryFn: () => getCustomerCredits(customerId) });
-  const { data: billsResponse } = useQuery({ queryKey: ['bills', customerId], queryFn: () => getBillsByCustomer(customerId) });
+  const { data: person, isLoading } = useQuery({ queryKey: ['person', personId], queryFn: () => getPerson(personId) });
+  const { data: credits } = useQuery({ queryKey: ['credits', personId], queryFn: () => getPersonCredits(personId) });
+  const { data: billsResponse } = useQuery({ queryKey: ['bills', personId], queryFn: () => getBillsByCustomer(personId) });
   const bills = billsResponse?.data ?? [];
   const { data: planesResponse } = useQuery({ queryKey: ['planes'], queryFn: getPlanes });
   const planes = planesResponse?.data ?? [];
-  const { data: allCustomersResponse } = useQuery({ queryKey: ['customers'], queryFn: () => getCustomers() });
-  const allCustomers = allCustomersResponse?.data ?? [];
+  const { data: allCustomersResponse } = useQuery({ queryKey: ['peoples'], queryFn: () => getPeoples() });
+  const allPeoples = allCustomersResponse?.data ?? [];
   const { data: payablesData } = useQuery({
-    queryKey: ['payables', 'customer', customerId],
-    queryFn: () => getPayables(undefined, 1, 999, customerId),
+    queryKey: ['payables', 'person', personId],
+    queryFn: () => getPayables(undefined, 1, 999, personId),
   });
   const customerPayables = payablesData?.data ?? [];
 
-  const instructorId = customer?.instructors?.[0]?.id;
+  const instructorId = person?.instructors?.[0]?.id;
   const { data: instructorFlightsData } = useQuery({
     queryKey: ['flights', 'instructor', instructorId],
     queryFn: () => getFlights(1, 9999, undefined, undefined, undefined, undefined, undefined, undefined, instructorId),
-    enabled: !!instructorId && customer?.categories?.includes('instrutor'),
+    enabled: !!instructorId && person?.categories?.includes('instructor'),
   });
   const instructorFlights = instructorFlightsData?.data ?? [];
 
   const { data: instructorPayablesData } = useQuery({
     queryKey: ['payables', 'instructor', instructorId],
     queryFn: () => getPayables(undefined, 1, 9999, undefined, undefined, undefined, undefined, instructorId),
-    enabled: !!instructorId && customer?.categories?.includes('instrutor'),
+    enabled: !!instructorId && person?.categories?.includes('instructor'),
   });
   const instructorPayables = instructorPayablesData?.data ?? [];
 
-  const employeeId = customer?.employees?.[0]?.id;
+  const employeeId = person?.employees?.[0]?.id;
   const { data: employeePayablesData } = useQuery({
     queryKey: ['payables', 'employee', employeeId],
     queryFn: () => getPayables(undefined, 1, 9999, undefined, undefined, undefined, undefined, undefined, employeeId),
-    enabled: !!employeeId && customer?.categories?.includes('funcionario'),
+    enabled: !!employeeId && person?.categories?.includes('employee'),
   });
   const employeePayables = employeePayablesData?.data ?? [];
 
@@ -487,7 +487,7 @@ export default function CustomerDetail() {
   const [editVoo, setEditVoo] = useState<Flight | null>(null);
   const [closeVoo, setCloseVoo] = useState<Flight | null>(null);
   const [payPayable, setPayPayable] = useState<Payable | null>(null);
-  const [editCustomerModal, setEditCustomerModal] = useState(false);
+  const [editPersonModal, setEditPersonModal] = useState(false);
 
   const PAGE_SIZE = 10;
   const [pendingFrom, setPendingFrom] = useState('');
@@ -502,103 +502,103 @@ export default function CustomerDetail() {
   const [selectedFatura, setSelectedFatura] = useState<Set<number>>(new Set());
   const [selectedPagar, setSelectedPagar] = useState<Set<number>>(new Set());
 
-  const updateCustomerMut = useMutation({
-    mutationFn: (data: unknown) => updateCustomer(customerId, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer', customerId] }); setEditCustomerModal(false); },
+  const updatePersonMut = useMutation({
+    mutationFn: (data: unknown) => updatePerson(personId, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['person', personId] }); setEditPersonModal(false); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
   const createTituloMut = useMutation({
     mutationFn: createReceivable,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); setNewTituloModal(false); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); setNewTituloModal(false); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const updateTituloMut = useMutation({
     mutationFn: ({ id: rid, data }: { id: number; data: unknown }) => updateReceivable(rid, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); setEditTitulo(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); setEditTitulo(null); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const deleteTituloMut = useMutation({
     mutationFn: deleteReceivable,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const bulkDeleteRecMut = useMutation({
     mutationFn: (ids: number[]) => Promise.all(ids.map(deleteReceivable)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); setSelectedRec(new Set()); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); setSelectedRec(new Set()); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const settleMut = useMutation({
     mutationFn: ({ id: rid, data }: { id: number; data: Parameters<typeof registerPayment>[1] }) => registerPayment(rid, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); qc.invalidateQueries({ queryKey: ['credits', customerId] }); setSettleTitulo(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); qc.invalidateQueries({ queryKey: ['credits', personId] }); setSettleTitulo(null); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
   const createVooMut = useMutation({
     mutationFn: createFlight,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['flights'] }); setNewVooModal(false); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['flights'] }); setNewVooModal(false); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const updateVooMut = useMutation({
     mutationFn: ({ id, data }: { id: number; data: unknown }) => updateFlight(id, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['flights'] }); setEditVoo(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['flights'] }); setEditVoo(null); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const closeVooMut = useMutation({
     mutationFn: ({ id: fid, end_date }: { id: number; end_date: string }) => closeFlight(fid, end_date),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['flights'] }); setCloseVoo(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['flights'] }); setCloseVoo(null); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const deleteVooMut = useMutation({
     mutationFn: deleteFlight,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['flights'] }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['flights'] }); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const bulkDeleteVooMut = useMutation({
     mutationFn: (ids: number[]) => Promise.all(ids.map(deleteFlight)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['flights'] }); setSelectedVoo(new Set()); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['flights'] }); setSelectedVoo(new Set()); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
   const createFaturaMut = useMutation({
     mutationFn: createBill,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills', customerId] }); qc.invalidateQueries({ queryKey: ['customer', customerId] }); setNewFaturaModal(false); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills', personId] }); qc.invalidateQueries({ queryKey: ['person', personId] }); setNewFaturaModal(false); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const deleteFaturaMut = useMutation({
     mutationFn: deleteBill,
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills', customerId] }); qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills', personId] }); qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const bulkDeleteFaturaMut = useMutation({
     mutationFn: (ids: number[]) => Promise.all(ids.map(deleteBill)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills', customerId] }); qc.invalidateQueries({ queryKey: ['customer', customerId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); setSelectedFatura(new Set()); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['bills', personId] }); qc.invalidateQueries({ queryKey: ['person', personId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); setSelectedFatura(new Set()); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
   const deletePayableMut = useMutation({
     mutationFn: deletePayable,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['payables', 'customer', customerId] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['payables', 'person', personId] }),
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const bulkDeletePayableMut = useMutation({
     mutationFn: (ids: number[]) => Promise.all(ids.map(deletePayable)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payables', 'customer', customerId] }); setSelectedPagar(new Set()); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payables', 'person', personId] }); setSelectedPagar(new Set()); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const payMut = useMutation({
     mutationFn: (d: unknown) => registerPayablePayment(payPayable!.id, d as { amount: number; method?: string; paid_at?: string }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payables', 'customer', customerId] }); setPayPayable(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payables', 'person', personId] }); setPayPayable(null); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
   if (isLoading) return <div className="p-8 text-[13px] text-ink-3">Carregando…</div>;
-  if (!customer) return <div className="p-8 text-[13px] text-ink-3">Pessoa não encontrada.</div>;
+  if (!person) return <div className="p-8 text-[13px] text-ink-3">Pessoa não encontrada.</div>;
 
-  const receivables = customer.receivables ?? [];
+  const receivables = person.receivables ?? [];
   const payerReceivables = receivables.filter(r => r.payer_type === 'customer' || r.payer_type == null);
   const ownPayables = customerPayables.filter(p => p.payer_type === 'customer' || p.payer_type == null);
-  const flights = customer.flights ?? [];
+  const flights = person.flights ?? [];
 
   const menuTitulo = tituloMenu ? receivables.find(r => r.id === tituloMenu.id) ?? null : null;
   const menuVoo = vooMenu ? flights.find(f => f.id === vooMenu.id) ?? null : null;
@@ -662,10 +662,10 @@ export default function CustomerDetail() {
   const filteredCreditos = filterDate(movements as any[], 'payment_date');
   const creditosResult = pageItems(filteredCreditos, tabPages.creditos);
 
-  const isAluno = customer.categories.includes('aluno');
-  const isInstructor = customer.categories.includes('instrutor');
-  const isPartner = customer.categories.includes('socio');
-  const isEmployee = customer.categories.includes('funcionario');
+  const isAluno = person.categories.includes('student');
+  const isInstructor = person.categories.includes('instructor');
+  const isPartner = person.categories.includes('partner');
+  const isEmployee = person.categories.includes('employee');
 
   const mensalidadeRecs = payerReceivables.filter(r => r.product === 'mensalidade');
   const mensalidadesTotal = mensalidadeRecs.reduce((s, r) => s + Number(r.total_amount), 0);
@@ -687,10 +687,10 @@ export default function CustomerDetail() {
 
   const ROLE_TABS = [
     { key: 'cliente', label: 'Cliente' },
-    ...(isAluno ? [{ key: 'aluno', label: 'Aluno' }] : []),
-    ...(isPartner ? [{ key: 'socio', label: 'Sócio' }] : []),
-    ...(isInstructor ? [{ key: 'instrutor', label: 'Instrutor' }] : []),
-    ...(isEmployee ? [{ key: 'funcionario', label: 'Funcionário' }] : []),
+    ...(isAluno ? [{ key: 'student', label: 'Aluno' }] : []),
+    ...(isPartner ? [{ key: 'partner', label: 'Sócio' }] : []),
+    ...(isInstructor ? [{ key: 'instructor', label: 'Instrutor' }] : []),
+    ...(isEmployee ? [{ key: 'employee', label: 'Funcionário' }] : []),
   ];
   const activeRoleTab = ROLE_TABS.find(t => t.key === roleTab)?.key ?? ROLE_TABS[0].key;
 
@@ -698,32 +698,32 @@ export default function CustomerDetail() {
     <div className="flex flex-col gap-4">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <button className="flex items-center gap-1 pb-2 mb-1 text-[13px] text-ink-3 cursor-pointer bg-transparent border-0 hover:text-ink" onClick={() => navigate('/pessoas')}><ChevronLeft size={15} /> Voltar</button>
-          <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">{customer.name}</h1>
+          <button className="flex items-center gap-1 pb-2 mb-1 text-[13px] text-ink-3 cursor-pointer bg-transparent border-0 hover:text-ink" onClick={() => navigate('/peoples')}><ChevronLeft size={15} /> Voltar</button>
+          <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">{person.name}</h1>
           <div className="flex flex-wrap items-center gap-1 mt-2">
-            {customer.categories.map(cat => (
+            {person.categories.map(cat => (
               <Chip key={cat} variant={cat as ChipVariant}>
-                {cat === 'socio' ? 'sócio' : cat}
+                {cat === 'partner' ? 'sócio' : cat === 'student' ? 'aluno' : cat === 'instructor' ? 'instrutor' : cat === 'employee' ? 'funcionário' : cat}
               </Chip>
             ))}
           </div>
           <div className="flex flex-wrap items-center gap-1.5 mt-2">
-            <span className="text-[12px] text-ink-3 font-mono">{customer.cpf} · {customer.email}</span>
-            {customer.phone_number && <span className="text-[12px] text-ink-3">· {customer.phone_number}</span>}
+            <span className="text-[12px] text-ink-3 font-mono">{person.cpf} · {person.email}</span>
+            {person.phone_number && <span className="text-[12px] text-ink-3">· {person.phone_number}</span>}
           </div>
-          {customer.address && (
+          {person.address && (
             <div className="text-[12px] text-ink-3 mt-2">
               {[
-                customer.address,
-                customer.neighborhood,
-                customer.city && customer.state ? `${customer.city} - ${customer.state}` : (customer.city || customer.state),
-                customer.zip_code,
+                person.address,
+                person.neighborhood,
+                person.city && person.state ? `${person.city} - ${person.state}` : (person.city || person.state),
+                person.zip_code,
               ].filter(Boolean).join(' · ')}
             </div>
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 mt-6">
-          <button className={btnCancel} onClick={() => setEditCustomerModal(true)}><Edit size={14} /> Editar</button>
+          <button className={btnCancel} onClick={() => setEditPersonModal(true)}><Edit size={14} /> Editar</button>
         </div>
       </div>
 
@@ -944,7 +944,7 @@ export default function CustomerDetail() {
         )}
 
         {/* ── ALUNO ── */}
-        {activeRoleTab === 'aluno' && (
+        {activeRoleTab === 'student' && (
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Voos</div>
@@ -1096,7 +1096,7 @@ export default function CustomerDetail() {
         )}
 
         {/* ── SÓCIO ── */}
-        {activeRoleTab === 'socio' && (
+        {activeRoleTab === 'partner' && (
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Mensalidades</div>
@@ -1167,7 +1167,6 @@ export default function CustomerDetail() {
             </div>
             <div className="flex border-b border-line">
               {[
-                { key: 'mensalidades', label: 'Mensalidades' },
                 { key: 'voos', label: 'Voos' },
                 { key: 'receber', label: 'Títulos a receber' },
                 { key: 'pagar', label: 'Títulos a pagar' },
@@ -1179,29 +1178,6 @@ export default function CustomerDetail() {
                 >{t.label}</button>
               ))}
             </div>
-
-            {socioSubTab === 'mensalidades' && (
-              <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-[13px]">
-                    <thead><tr><th className={thCls}>Título</th><th className={thCls}>Vencimento</th><th className={thNumCls}>Valor</th><th className={thNumCls}>Recebido</th><th className={thCls}>Status</th></tr></thead>
-                    <tbody>
-                      {mensalidadesResult.rows.length === 0 && <tr><td colSpan={5} className="px-3.5 py-6 text-center text-ink-3">Nenhuma mensalidade encontrada.</td></tr>}
-                      {mensalidadesResult.rows.map(r => { const st = receivableStatus(r); return (
-                        <tr key={r.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/receivables/${r.id}`)}>
-                          <td className={`${tdCls} font-medium`}>{r.title}</td>
-                          <td className={`${tdCls} font-mono text-[12px]`}>{formatDate(r.expiration_date)}</td>
-                          <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(r.total_amount)}</td>
-                          <td className={`${tdCls} text-right font-mono`}>{Number(r.amount_received) > 0 ? `R$ ${formatBRL(r.amount_received)}` : '—'}</td>
-                          <td className={tdCls}><Badge variant={(STATUS_BADGE[st] ?? 'default') as BadgeVariant}>{STATUS_LABEL[st]}</Badge></td>
-                        </tr>
-                      ); })}
-                    </tbody>
-                  </table>
-                </div>
-                <Pagination page={tabPages.mensalidades} totalPages={mensalidadesResult.totalPages} total={mensalidadeRecs.length} limit={PAGE_SIZE} onChange={p => setTabPage('mensalidades', p)} />
-              </div>
-            )}
 
             {socioSubTab === 'voos' && (
               <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
@@ -1275,7 +1251,7 @@ export default function CustomerDetail() {
         )}
 
         {/* ── INSTRUTOR ── */}
-        {activeRoleTab === 'instrutor' && (
+        {activeRoleTab === 'instructor' && (
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Voos</div>
@@ -1398,7 +1374,7 @@ export default function CustomerDetail() {
         )}
 
         {/* ── FUNCIONÁRIO ── */}
-        {activeRoleTab === 'funcionario' && (
+        {activeRoleTab === 'employee' && (
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Financeiro</div>
@@ -1496,19 +1472,19 @@ export default function CustomerDetail() {
         </RowMenu>
       )}
 
-      {newTituloModal && <NewTituloModal customerId={customerId} onClose={() => setNewTituloModal(false)} onSave={d => createTituloMut.mutate(d)} />}
-      {creditModal && <NewCreditModal customerId={customerId} onClose={() => setCreditModal(false)} onSuccess={() => setCreditModal(false)} />}
+      {newTituloModal && <NewTituloModal personId={personId} onClose={() => setNewTituloModal(false)} onSave={d => createTituloMut.mutate(d)} />}
+      {creditModal && <NewCreditModal personId={personId} onClose={() => setCreditModal(false)} onSuccess={() => setCreditModal(false)} />}
       {editTitulo && <EditTituloModal rec={editTitulo} onClose={() => setEditTitulo(null)} onSave={d => updateTituloMut.mutate({ id: editTitulo.id, data: d })} />}
       {settleTitulo && <SettleTituloModal rec={settleTitulo} creditBalance={creditBalance} onClose={() => setSettleTitulo(null)} onSave={d => settleMut.mutate({ id: settleTitulo.id, data: d as Parameters<typeof registerPayment>[1] })} />}
 
-      {newVooModal && <FlightModal mode="new" customers={allCustomers} planes={planes} initialCustomerId={customerId} onClose={() => setNewVooModal(false)} onSave={d => createVooMut.mutate(d)} />}
-      {editVoo && <FlightModal mode="edit" flight={editVoo} customers={allCustomers} planes={planes} onClose={() => setEditVoo(null)} onSave={(data) => updateVooMut.mutate({ id: editVoo.id, data })} />}
+      {newVooModal && <FlightModal mode="new" customers={allPeoples} planes={planes} initialCustomerId={personId} onClose={() => setNewVooModal(false)} onSave={d => createVooMut.mutate(d)} />}
+      {editVoo && <FlightModal mode="edit" flight={editVoo} customers={allPeoples} planes={planes} onClose={() => setEditVoo(null)} onSave={(data) => updateVooMut.mutate({ id: editVoo.id, data })} />}
       {closeVoo && <CloseFlightModal flight={closeVoo} onClose={() => setCloseVoo(null)} onSave={end_date => closeVooMut.mutate({ id: closeVoo.id, end_date })} />}
 
-      {newFaturaModal && <NewFaturaModal receivables={receivables} customerId={customerId} onClose={() => setNewFaturaModal(false)} onSave={d => createFaturaMut.mutate(d)} />}
+      {newFaturaModal && <NewFaturaModal receivables={receivables} personId={personId} onClose={() => setNewFaturaModal(false)} onSave={d => createFaturaMut.mutate(d)} />}
 
       {payPayable && <PayModal payable={payPayable} onClose={() => setPayPayable(null)} onSave={d => payMut.mutate(d)} />}
-      {editCustomerModal && <CustomerModal mode="edit" customer={customer} onClose={() => setEditCustomerModal(false)} onSave={data => updateCustomerMut.mutate(data)} />}
+      {editPersonModal && <PersonModal mode="edit" person={person} onClose={() => setEditPersonModal(false)} onSave={data => updatePersonMut.mutate(data)} />}
 
     </div>
   );

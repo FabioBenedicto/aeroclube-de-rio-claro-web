@@ -3,11 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon } from 'lucide-react';
 import { getFlights, getFlight, createFlight, updateFlight, closeFlight, deleteFlight } from '../../api/flights';
-import { getCustomers } from '../../api/customers';
+import { getPeoples } from '../../api/peoples';
 import { getPlanes } from '../../api/planes';
 import { formatDate, formatBRL, formatHours } from '../../utils/format';
 import DateInput from '../../components/DateInput';
-import type { Flight, Customer, Plane } from '../../types';
+import type { Flight, Person, Plane } from '../../types';
 import FlightModal from './FlightModal';
 import CloseFlightModal from './CloseFlightModal';
 import RowMenu, { RowMenuSep } from '../../components/RowMenu';
@@ -70,8 +70,8 @@ export default function Flights() {
   const flights = highlightId != null ? (singleFlight ? [singleFlight] : []) : (data?.data ?? []);
   const isLoading2 = highlightId != null ? loadingSingle : isLoading;
 
-  const { data: customersData } = useQuery({ queryKey: ['customers', '', 'all', 1], queryFn: () => getCustomers(undefined, undefined, 1, 9999) });
-  const customers: Customer[] = customersData?.data ?? [];
+  const { data: customersData } = useQuery({ queryKey: ['peoples', '', 'all', 1], queryFn: () => getPeoples(undefined, undefined, 1, 9999) });
+  const customers: Person[] = customersData?.data ?? [];
 
   const { data: planesData } = useQuery({ queryKey: ['planes', 1], queryFn: () => getPlanes(1, 9999) });
   const planes: Plane[] = planesData?.data ?? [];

@@ -21,8 +21,8 @@ import InvoiceDetail from './pages/invoices/InvoiceDetail';
 import Companies from './pages/companies/Companies';
 import CompanyDetail from './pages/companies/CompanyDetail';
 import Settings from './pages/Settings';
-import Customers from './pages/customers/Customers';
-import CustomerDetail from './pages/customers/CustomerDetail';
+import Peoples from './pages/peoples/Peoples';
+import PersonDetail from './pages/peoples/PersonDetail';
 import Users from './pages/users/Users';
 import Reports from './pages/reports/Reports';
 import Profile from './pages/Profile';
@@ -48,8 +48,8 @@ export default function App() {
               <Route path="/" element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
-                <Route path="pessoas" element={<Customers />} />
-                <Route path="pessoas/:id" element={<CustomerDetail />} />
+                <Route path="peoples" element={<Peoples />} />
+                <Route path="peoples/:id" element={<PersonDetail />} />
                 <Route path="companies" element={<Companies />} />
                 <Route path="companies/:id" element={<CompanyDetail />} />
                 <Route path="flights" element={<Flights />} />

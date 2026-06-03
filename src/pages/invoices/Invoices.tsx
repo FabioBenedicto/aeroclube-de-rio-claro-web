@@ -4,10 +4,10 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, MoreHorizontal, Eye, Trash2, Check as CheckIcon, X, Paperclip, ExternalLink, ChevronRight, ChevronLeft } from 'lucide-react';
 import { getBills, createBill, deleteBill, uploadBillNotaFiscal, deleteBillNotaFiscal } from '../../api/invoices';
-import { getCustomers } from '../../api/customers';
+import { getPeoples } from '../../api/peoples';
 import { getReceivables } from '../../api/receivables';
 import { formatBRL, formatDate, receivableStatus, BILL_STATUS_LABEL, BILL_STATUS_BADGE } from '../../utils/format';
-import type { Bill, Customer, Receivable } from '../../types';
+import type { Bill, Person, Receivable } from '../../types';
 import RowMenu, { RowMenuSep } from '../../components/RowMenu';
 import Badge from '../../components/ui/Badge';
 import Checkbox from '../../components/ui/Checkbox';
@@ -31,12 +31,12 @@ function NewInvoiceModal({ onClose, onSave }: {
   onSave: (d: { customer_id: number; items: { receivable_id: number; amount: number }[]; payment_method?: string; due_date?: string }) => void;
 }) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Person | null>(null);
   const [selected, setSelected] = useState<Record<number, number>>({});
   const [method, setMethod] = useState('PIX');
   const [dueDate, setDueDate] = useState('');
 
-  const { data: customersData } = useQuery({ queryKey: ['customers', '', 'all', 1], queryFn: () => getCustomers(undefined, undefined, 1, 9999) });
+  const { data: customersData } = useQuery({ queryKey: ['peoples', '', 'all', 1], queryFn: () => getPeoples(undefined, undefined, 1, 9999) });
   const customers = customersData?.data ?? [];
 
   const { data: receivablesData } = useQuery({ queryKey: ['receivables', 'all', '', 1], queryFn: () => getReceivables(undefined, undefined, 1, 9999), enabled: !!selectedCustomer });
@@ -79,9 +79,9 @@ function NewInvoiceModal({ onClose, onSave }: {
             <div className="p-[18px] overflow-y-auto flex-1 flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-medium text-ink-2">Selecionar cliente</label>
-                <select className={sel} value={selectedCustomer?.id ?? ''} onChange={e => { const c = customers.find((x: Customer) => x.id === Number(e.target.value)) ?? null; setSelectedCustomer(c); setSelected({}); }}>
+                <select className={sel} value={selectedCustomer?.id ?? ''} onChange={e => { const c = customers.find((x: Person) => x.id === Number(e.target.value)) ?? null; setSelectedCustomer(c); setSelected({}); }}>
                   <option value="">Selecione</option>
-                  {customers.map((c: Customer) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {customers.map((c: Person) => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
             </div>

@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Eye, Edit, Trash2, MoreHorizontal } from 'lucide-react';
 import DateInput from '../../components/DateInput';
-import { getCustomers, createCustomer, updateCustomer, deleteCustomer } from '../../api/customers';
-import type { Customer } from '../../types';
-import CustomerModal from './CustomerModal';
+import { getPeoples, createPerson, updatePerson, deletePerson } from '../../api/peoples';
+import type { Person } from '../../types';
+import PersonModal from './PersonModal';
 import RowMenu, { RowMenuSep } from '../../components/RowMenu';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../contexts/AuthContext';
@@ -17,7 +17,7 @@ import Checkbox from '../../components/ui/Checkbox';
 
 type MenuState = { id: number; top: number; right: number };
 
-export default function Customers() {
+export default function Peoples() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { can } = useAuth();
@@ -31,7 +31,7 @@ export default function Customers() {
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [menuState, setMenuState] = useState<MenuState | null>(null);
-  const [modal, setModal] = useState<{ mode: 'new' | 'edit'; customer?: Customer } | null>(null);
+  const [modal, setModal] = useState<{ mode: 'new' | 'edit'; person?: Person } | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   useEffect(() => {
@@ -42,45 +42,45 @@ export default function Customers() {
   useEffect(() => { setPage(1); }, [debouncedSearch, catFilter, dateFrom, dateTo]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['customers', debouncedSearch, catFilter, dateFrom, dateTo, page],
-    queryFn: () => getCustomers(debouncedSearch || undefined, catFilter === 'all' ? undefined : catFilter, page, 20, dateFrom || undefined, dateTo || undefined),
+    queryKey: ['peoples', debouncedSearch, catFilter, dateFrom, dateTo, page],
+    queryFn: () => getPeoples(debouncedSearch || undefined, catFilter === 'all' ? undefined : catFilter, page, 20, dateFrom || undefined, dateTo || undefined),
   });
 
-  const customers = data?.data ?? [];
+  const peoples = data?.data ?? [];
 
   const deleteMut = useMutation({
-    mutationFn: deleteCustomer,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['customers'] }),
+    mutationFn: deletePerson,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['peoples'] }),
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
   const bulkDeleteMut = useMutation({
-    mutationFn: (ids: number[]) => Promise.all(ids.map(id => deleteCustomer(id))),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['customers'] }); setSelected(new Set()); },
+    mutationFn: (ids: number[]) => Promise.all(ids.map(id => deletePerson(id))),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['peoples'] }); setSelected(new Set()); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
-  const menuCustomer = menuState ? customers.find(c => c.id === menuState.id) ?? null : null;
+  const menuPerson = menuState ? peoples.find(c => c.id === menuState.id) ?? null : null;
 
-  const allIds = customers.map(x => x.id);
+  const allIds = peoples.map(x => x.id);
   const allSelected = allIds.length > 0 && allIds.every(id => selected.has(id));
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(allIds));
   const toggleOne = (id: number) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   function handleSave(d: unknown, id?: number) {
     if (id) {
-      updateCustomer(id, d).then(() => { qc.invalidateQueries({ queryKey: ['customers'] }); setModal(null); }).catch((e: unknown) => toast.error(extractErrorMessage(e)));
+      updatePerson(id, d).then(() => { qc.invalidateQueries({ queryKey: ['peoples'] }); setModal(null); }).catch((e: unknown) => toast.error(extractErrorMessage(e)));
     } else {
-      createCustomer(d).then(() => { qc.invalidateQueries({ queryKey: ['customers'] }); setModal(null); }).catch((e: unknown) => toast.error(extractErrorMessage(e)));
+      createPerson(d).then(() => { qc.invalidateQueries({ queryKey: ['peoples'] }); setModal(null); }).catch((e: unknown) => toast.error(extractErrorMessage(e)));
     }
   }
 
   const CATS = [
     { key: 'all', label: 'Todos' },
-    { key: 'aluno', label: 'Alunos' },
-    { key: 'socio', label: 'Sócios' },
-    { key: 'instrutor', label: 'Instrutores' },
-    { key: 'funcionario', label: 'Funcionários' },
+    { key: 'student', label: 'Alunos' },
+    { key: 'partner', label: 'Sócios' },
+    { key: 'instructor', label: 'Instrutores' },
+    { key: 'employee', label: 'Funcionários' },
   ] as const;
 
   return (
@@ -174,16 +174,16 @@ export default function Customers() {
                   </tr>
                 </thead>
                 <tbody>
-                  {customers.map(c => (
-                    <tr key={c.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/pessoas/${c.id}`)}>
+                  {peoples.map(c => (
+                    <tr key={c.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/peoples/${c.id}`)}>
                       <td className="px-3.5 py-2.5 border-b border-line w-9" onClick={e => e.stopPropagation()}><Checkbox checked={selected.has(c.id)} onChange={() => toggleOne(c.id)} /></td>
                       <td className="px-3.5 py-2.5 border-b border-line font-medium text-ink">{c.name}</td>
                       <td className="px-3.5 py-2.5 border-b border-line font-mono text-[12px]">{c.cpf}</td>
                       <td className="px-3.5 py-2.5 border-b border-line">
                         <div className="flex gap-1 flex-wrap">
                           {c.categories.map(cat => (
-                            <Chip key={cat} variant={cat as 'aluno' | 'socio' | 'instrutor' | 'funcionario'}>
-                              {{ aluno: 'aluno', socio: 'sócio', instrutor: 'instrutor', funcionario: 'funcionário' }[cat] ?? cat}
+                            <Chip key={cat} variant={cat as 'student' | 'partner' | 'instructor' | 'employee'}>
+                              {{ student: 'aluno', partner: 'sócio', instructor: 'instrutor', employee: 'funcionário' }[cat] ?? cat}
                             </Chip>
                           ))}
                         </div>
@@ -203,7 +203,7 @@ export default function Customers() {
                       </td>
                     </tr>
                   ))}
-                  {customers.length === 0 && (
+                  {peoples.length === 0 && (
                     <tr><td colSpan={6} className="px-3.5 py-8 text-center text-ink-3">Nenhuma pessoa encontrada.</td></tr>
                   )}
                 </tbody>
@@ -216,18 +216,18 @@ export default function Customers() {
 
       </div>
 
-      {menuState && menuCustomer && (
+      {menuState && menuPerson && (
         <RowMenu top={menuState.top} right={menuState.right} onClose={() => setMenuState(null)}>
-          <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => navigate(`/pessoas/${menuCustomer.id}`)}><Eye size={14} /> Ver detalhes</button>
-          {can(PERM.CUSTOMERS.UPDATE) && <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => setModal({ mode: 'edit', customer: menuCustomer })}><Edit size={14} /> Editar</button>}
-          {can(PERM.CUSTOMERS.DELETE) && <><RowMenuSep /><button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-danger rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-danger-soft text-left" onClick={() => deleteMut.mutate(menuCustomer.id)}><Trash2 size={14} /> Remover</button></>}
+          <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => navigate(`/peoples/${menuPerson.id}`)}><Eye size={14} /> Ver detalhes</button>
+          {can(PERM.CUSTOMERS.UPDATE) && <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => setModal({ mode: 'edit', person: menuPerson })}><Edit size={14} /> Editar</button>}
+          {can(PERM.CUSTOMERS.DELETE) && <><RowMenuSep /><button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-danger rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-danger-soft text-left" onClick={() => deleteMut.mutate(menuPerson.id)}><Trash2 size={14} /> Remover</button></>}
         </RowMenu>
       )}
 
       {modal && (
-        <CustomerModal
+        <PersonModal
           mode={modal.mode}
-          customer={modal.customer}
+          person={modal.person}
           onClose={() => setModal(null)}
           onSave={handleSave}
         />

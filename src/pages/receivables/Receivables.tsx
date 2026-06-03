@@ -4,13 +4,13 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Plane as PlaneIcon, Calendar, Wrench, Package, BarChart3, ArrowDownLeft, Clock, AlertCircle } from 'lucide-react';
 import { getReceivables, createReceivable, updateReceivable, deleteReceivable, registerPayment } from '../../api/receivables';
 import Checkbox from '../../components/ui/Checkbox';
-import { getCustomers } from '../../api/customers';
+import { getPeoples } from '../../api/peoples';
 import { getPlanes } from '../../api/planes';
 import { getCompanies } from '../../api/companies';
 import DateInput from '../../components/DateInput';
 import { maskCurrency, parseCurrency } from '../../utils/masks';
 import { formatBRL, formatDate, receivableStatus, STATUS_LABEL, STATUS_BADGE } from '../../utils/format';
-import type { Receivable, Plane, Customer, Company } from '../../types';
+import type { Receivable, Plane, Person, Company } from '../../types';
 import RowMenu, { RowMenuSep } from '../../components/RowMenu';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../contexts/AuthContext';
@@ -296,26 +296,26 @@ export default function Receivables() {
   useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 300); return () => clearTimeout(t); }, [search]);
   useEffect(() => { setPage(1); }, [tab, debouncedSearch, dateFrom, dateTo]);
 
-  const { data: customersData } = useQuery({ queryKey: ['customers', '', 'all', 1], queryFn: () => getCustomers(undefined, undefined, 1, 9999) });
+  const { data: customersData } = useQuery({ queryKey: ['peoples', '', 'all', 1], queryFn: () => getPeoples(undefined, undefined, 1, 9999) });
   const customers = customersData?.data ?? [];
 
   const { data: planesData } = useQuery({ queryKey: ['planes', 1], queryFn: () => getPlanes(1, 9999) });
   const planes: Plane[] = planesData?.data ?? [];
 
-  const { data: instructorData } = useQuery({ queryKey: ['customers', '', 'instrutor', 1], queryFn: () => getCustomers(undefined, 'instrutor', 1, 9999) });
+  const { data: instructorData } = useQuery({ queryKey: ['peoples', '', 'instructor', 1], queryFn: () => getPeoples(undefined, 'instructor', 1, 9999) });
   const instructors: NamedOption[] = (instructorData?.data ?? [])
-    .filter((c: Customer) => c.instructors?.length > 0)
-    .map((c: Customer) => ({ id: c.instructors[0].id, name: c.name }));
+    .filter((c: Person) => c.instructors?.length > 0)
+    .map((c: Person) => ({ id: c.instructors[0].id, name: c.name }));
 
-  const { data: partnerData } = useQuery({ queryKey: ['customers', '', 'socio', 1], queryFn: () => getCustomers(undefined, 'socio', 1, 9999) });
+  const { data: partnerData } = useQuery({ queryKey: ['peoples', '', 'partner', 1], queryFn: () => getPeoples(undefined, 'partner', 1, 9999) });
   const partners: NamedOption[] = (partnerData?.data ?? [])
-    .filter((c: Customer) => c.partners?.length > 0)
-    .map((c: Customer) => ({ id: c.partners[0].id, name: c.name }));
+    .filter((c: Person) => c.partners?.length > 0)
+    .map((c: Person) => ({ id: c.partners[0].id, name: c.name }));
 
-  const { data: employeeData } = useQuery({ queryKey: ['customers', '', 'funcionario', 1], queryFn: () => getCustomers(undefined, 'funcionario', 1, 9999) });
+  const { data: employeeData } = useQuery({ queryKey: ['peoples', '', 'employee', 1], queryFn: () => getPeoples(undefined, 'employee', 1, 9999) });
   const employees: NamedOption[] = (employeeData?.data ?? [])
-    .filter((c: Customer) => (c.employees ?? []).length > 0)
-    .map((c: Customer) => ({ id: c.employees![0].id, name: c.name }));
+    .filter((c: Person) => (c.employees ?? []).length > 0)
+    .map((c: Person) => ({ id: c.employees![0].id, name: c.name }));
 
   const { data: companiesData } = useQuery({ queryKey: ['companies', '', 1], queryFn: () => getCompanies(undefined, 1, 9999) });
   const companies: Company[] = companiesData?.data ?? [];
