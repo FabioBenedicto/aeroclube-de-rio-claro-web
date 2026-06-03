@@ -29,3 +29,9 @@ export const updateUser = (id: number, data: Partial<UserPayload>) =>
 
 export const deleteUser = (id: number) =>
   client.delete(`/users/${id}`);
+
+export const updateMe = (data: { name?: string; email?: string; password?: string; currentPassword?: string }) =>
+  client.patch<UserRecord>('/users/me', data).then((r) => r.data);
+
+export const deleteMe = () =>
+  client.delete('/users/me');
