@@ -38,7 +38,6 @@ const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text
 const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 
 const PAYER_TYPES_PAY = [
-  { value: 'none',       label: 'Nenhum',     Icon: Minus },
   { value: 'customer',   label: 'Pessoa',     Icon: User },
   { value: 'instructor', label: 'Instrutor',  Icon: UserCheck },
   { value: 'partner',    label: 'Sócio',      Icon: Users },
@@ -56,9 +55,9 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
   onClose: () => void;
   onSave: (d: unknown) => void;
 }) {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [form, setForm] = useState({
-    payer_type: 'none', payer_id: '', plane_id: '',
+    payer_type: '', payer_id: '', plane_id: '',
     title: '', description: '', amount: '', due_date: '',
     product: 'servico', recurrence: '', occurrences: '2',
   });
@@ -67,11 +66,9 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
   const payerList = payerLists[form.payer_type] ?? [];
 
   function goNext() {
-    if (form.payer_type !== 'none' && !form.payer_id) {
-      toast.error('Selecione o recebedor');
-      return;
-    }
-    setStep(2);
+    if (step === 1 && !form.payer_type) { toast.error('Selecione o tipo de recebedor'); return; }
+    if (step === 2 && !form.payer_id) { toast.error('Selecione o recebedor'); return; }
+    setStep(s => (s + 1) as 1 | 2 | 3);
   }
 
   return (
@@ -81,13 +78,13 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
           <div className="flex items-center gap-3">
             <h3 className="text-[15px] font-semibold m-0">Novo título a pagar</h3>
             <div className="flex items-center gap-1.5">
-              {(['Recebedor', 'Título'] as const).map((label, i) => {
-                const n = (i + 1) as 1 | 2;
+              {(['Tipo', 'Recebedor', 'Título'] as const).map((label, i) => {
+                const n = (i + 1) as 1 | 2 | 3;
                 return (
                   <span key={n} className="flex items-center gap-1.5">
                     <span className={`w-5 h-5 rounded-full text-[11px] font-semibold flex items-center justify-center transition-colors ${step === n ? 'bg-accent text-white' : step > n ? 'bg-success text-white' : 'bg-bg-sunk text-ink-3'}`}>{n}</span>
                     <span className={`text-[11px] ${step === n ? 'text-ink font-medium' : 'text-ink-3'}`}>{label}</span>
-                    {i < 1 && <ChevronRight size={12} className="text-ink-4" />}
+                    {i < 2 && <ChevronRight size={12} className="text-ink-4" />}
                   </span>
                 );
               })}
@@ -98,35 +95,34 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
 
         <div className={modalBody}>
           {step === 1 && (
-            <>
-              <div className="grid grid-cols-3 gap-2.5">
-                {PAYER_TYPES_PAY.map(({ value, label, Icon }) => {
-                  const active = form.payer_type === value;
-                  return (
-                    <button
-                      key={value}
-                      className={`flex flex-col items-center gap-2 py-4 px-2 rounded-lg border-2 cursor-pointer transition-colors ${active ? 'border-accent bg-accent-soft' : 'border-line bg-bg hover:bg-bg-hover'}`}
-                      onClick={() => setForm(f => ({ ...f, payer_type: value, payer_id: '' }))}
-                    >
-                      <Icon size={22} className={active ? 'text-accent' : 'text-ink-3'} />
-                      <span className={`text-[12px] font-medium ${active ? 'text-accent-ink' : 'text-ink-2'}`}>{label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-              {form.payer_type !== 'none' && (
-                <div className={field}>
-                  <label className={lbl}>Selecionar</label>
-                  <select className={sel} value={form.payer_id} onChange={e => setForm(f => ({ ...f, payer_id: e.target.value }))}>
-                    <option value="">Selecione</option>
-                    {payerList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                </div>
-              )}
-            </>
+            <div className="grid grid-cols-3 gap-2.5">
+              {PAYER_TYPES_PAY.map(({ value, label, Icon }) => {
+                const active = form.payer_type === value;
+                return (
+                  <button
+                    key={value}
+                    className={`flex flex-col items-center gap-2 py-4 px-2 rounded-lg border-2 cursor-pointer transition-colors ${active ? 'border-accent bg-accent-soft' : 'border-line bg-bg hover:bg-bg-hover'}`}
+                    onClick={() => setForm(f => ({ ...f, payer_type: value, payer_id: '' }))}
+                  >
+                    <Icon size={22} className={active ? 'text-accent' : 'text-ink-3'} />
+                    <span className={`text-[12px] font-medium ${active ? 'text-accent-ink' : 'text-ink-2'}`}>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
           )}
 
           {step === 2 && (
+            <div className={field}>
+              <label className={lbl}>Selecionar recebedor</label>
+              <select className={sel} value={form.payer_id} onChange={e => setForm(f => ({ ...f, payer_id: e.target.value }))}>
+                <option value="">Selecione</option>
+                {payerList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {step === 3 && (
             <>
               <div className={field}><label className={lbl}>Tipo</label>
                 <select className={sel} value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}>
@@ -184,16 +180,15 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
           )}
         </div>
 
-        <div className={modalFoot} style={{ justifyContent: step === 1 ? 'space-between' : 'flex-end' }}>
-          {step === 1 ? (
-            <>
-              <button className={btnCancel} onClick={onClose}>Cancelar</button>
-              <button className={btnPrimary} onClick={goNext}>Próximo <ChevronRight size={14} /></button>
-            </>
-          ) : (
-            <>
-              <button className={btnCancel} onClick={() => setStep(1)}><ChevronLeft size={14} /> Voltar</button>
-              <button className={btnPrimary} onClick={() => onSave({
+        <div className={modalFoot} style={{ justifyContent: 'space-between' }}>
+          <div>
+            {step > 1 && <button className={btnCancel} onClick={() => setStep(s => (s - 1) as 1 | 2 | 3)}><ChevronLeft size={14} /> Voltar</button>}
+          </div>
+          <div className="flex items-center gap-2">
+            {step === 1 && <button className={btnCancel} onClick={onClose}>Cancelar</button>}
+            {step < 3
+              ? <button className={btnPrimary} onClick={goNext}>Próximo <ChevronRight size={14} /></button>
+              : <button className={btnPrimary} onClick={() => onSave({
                 payer_type: form.payer_type,
                 ...(form.payer_type === 'customer' && form.payer_id && { client_id: Number(form.payer_id) }),
                 ...(form.payer_type === 'company' && form.payer_id && { company_id: Number(form.payer_id) }),
@@ -210,9 +205,8 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
                 occurrences: form.recurrence ? Number(form.occurrences) : undefined,
               })}>
                 <CheckIcon size={14} /> Criar título
-              </button>
-            </>
-          )}
+              </button>}
+          </div>
         </div>
       </div>
     </div>
