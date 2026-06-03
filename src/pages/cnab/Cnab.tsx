@@ -49,7 +49,9 @@ function GerarRemessaModal({ onClose, onSuccess }: {
       const a = document.createElement('a');
       a.href = url;
       a.download = `remessa_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.rem`;
+      document.body.appendChild(a);
       a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
       return remessa;
     },
@@ -206,7 +208,9 @@ export default function Cnab() {
         const a = document.createElement('a');
         a.href = url;
         a.download = `remessa_${id}.rem`;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
         URL.revokeObjectURL(url);
       })
       .catch(() => toast.error('Erro ao baixar arquivo'));
