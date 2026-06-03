@@ -56,7 +56,7 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
   onClose: () => void;
   onSave: (d: unknown) => void;
 }) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [form, setForm] = useState({
     payer_type: '', payer_id: '', plane_id: '',
     title: '', description: '', product: 'voo',
@@ -70,7 +70,8 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
   function goNext() {
     if (step === 1 && !form.payer_type) { toast.error('Selecione o tipo de pagador'); return; }
     if (step === 2 && !form.payer_id) { toast.error('Selecione o pagador'); return; }
-    setStep(s => (s + 1) as 1 | 2 | 3);
+    if (step === 3 && !form.title.trim()) { toast.error('Título é obrigatório'); return; }
+    setStep(s => (s + 1) as 1 | 2 | 3 | 4 | 5);
   }
 
   return (
@@ -80,13 +81,13 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
           <div className="flex items-center gap-3">
             <h3 className="text-[15px] font-semibold m-0">Novo título a receber</h3>
             <div className="flex items-center gap-1.5">
-              {(['Tipo', 'Pagador', 'Título'] as const).map((label, i) => {
-                const n = (i + 1) as 1 | 2 | 3;
+              {(['Tipo', 'Pagador', 'Título', 'Aeronave', 'Recorrência'] as const).map((label, i) => {
+                const n = (i + 1) as 1 | 2 | 3 | 4 | 5;
                 return (
                   <span key={n} className="flex items-center gap-1.5">
                     <span className={`w-5 h-5 rounded-full text-[11px] font-semibold flex items-center justify-center transition-colors ${step === n ? 'bg-accent text-white' : step > n ? 'bg-success text-white' : 'bg-bg-sunk text-ink-3'}`}>{n}</span>
                     <span className={`text-[11px] ${step === n ? 'text-ink font-medium' : 'text-ink-3'}`}>{label}</span>
-                    {i < 2 && <ChevronRight size={12} className="text-ink-4" />}
+                    {i < 4 && <ChevronRight size={12} className="text-ink-4" />}
                   </span>
                 );
               })}
@@ -148,47 +149,50 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
                   </div>
                 </div>
               </div>
-              <div className="border-t border-line pt-3.5 flex flex-col gap-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Aeronave</div>
-                <div className={field}>
-                  <select className={sel} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
-                    <option value="">Sem aeronave</option>
-                    {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
+            </>
+          )}
+
+          {step === 4 && (
+            <div className={field}>
+              <label className={lbl}>Aeronave</label>
+              <select className={sel} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
+                <option value="">Sem aeronave</option>
+                {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
+              </select>
+            </div>
+          )}
+
+          {step === 5 && (
+            <div className="flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className={field}><label className={lbl}>Repetir</label>
+                  <select className={sel} value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))}>
+                    <option value="">Sem recorrência</option>
+                    <option value="monthly">Mensal</option><option value="weekly">Semanal</option><option value="yearly">Anual</option>
                   </select>
                 </div>
-              </div>
-              <div className="border-t border-line pt-3.5 flex flex-col gap-3">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Recorrência</div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className={field}><label className={lbl}>Repetir</label>
-                    <select className={sel} value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))}>
-                      <option value="">Sem recorrência</option>
-                      <option value="monthly">Mensal</option><option value="weekly">Semanal</option><option value="yearly">Anual</option>
-                    </select>
-                  </div>
-                  {form.recurrence && (
-                    <div className={field}><label className={lbl}>Nº de ocorrências</label>
-                      <input type="number" className={inp + ' font-mono'} min={2} max={60} value={form.occurrences} onChange={e => setForm(f => ({ ...f, occurrences: e.target.value }))} />
-                    </div>
-                  )}
-                </div>
                 {form.recurrence && (
-                  <div className="text-[12px] text-ink-3">
-                    Serão criados <strong>{form.occurrences}</strong> títulos com vencimentos {form.recurrence === 'monthly' ? 'mensais' : form.recurrence === 'weekly' ? 'semanais' : 'anuais'}, a partir da data informada.
+                  <div className={field}><label className={lbl}>Nº de ocorrências</label>
+                    <input type="number" className={inp + ' font-mono'} min={2} max={60} value={form.occurrences} onChange={e => setForm(f => ({ ...f, occurrences: e.target.value }))} />
                   </div>
                 )}
               </div>
-            </>
+              {form.recurrence && (
+                <div className="text-[12px] text-ink-3">
+                  Serão criados <strong>{form.occurrences}</strong> títulos com vencimentos {form.recurrence === 'monthly' ? 'mensais' : form.recurrence === 'weekly' ? 'semanais' : 'anuais'}, a partir da data informada.
+                </div>
+              )}
+            </div>
           )}
         </div>
 
         <div className={modalFoot} style={{ justifyContent: step === 1 ? 'space-between' : 'space-between' }}>
           <div>
-            {step > 1 && <button className={btnCancel} onClick={() => setStep(s => (s - 1) as 1 | 2 | 3)}><ChevronLeft size={14} /> Voltar</button>}
+            {step > 1 && <button className={btnCancel} onClick={() => setStep(s => (s - 1) as 1 | 2 | 3 | 4 | 5)}><ChevronLeft size={14} /> Voltar</button>}
           </div>
           <div className="flex items-center gap-2">
             {step === 1 && <button className={btnCancel} onClick={onClose}>Cancelar</button>}
-            {step < 3
+            {step < 5
               ? <button className={btnPrimary} onClick={goNext}>Próximo <ChevronRight size={14} /></button>
               : <button className={btnPrimary} onClick={() => onSave({
                 payer_type: form.payer_type,
