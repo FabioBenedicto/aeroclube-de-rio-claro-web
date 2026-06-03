@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Plane, Calendar, Wrench, Package } from 'lucide-react';
 import { getReceivables, createReceivable, updateReceivable, deleteReceivable, registerPayment } from '../../api/receivables';
 import Checkbox from '../../components/ui/Checkbox';
 import { getCustomers } from '../../api/customers';
@@ -38,6 +38,13 @@ const btnCancel = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-
 const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90';
 const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 
+const PRODUCT_TYPES_REC = [
+  { value: 'voo',         label: 'Voo',         Icon: Plane },
+  { value: 'mensalidade', label: 'Mensalidade',  Icon: Calendar },
+  { value: 'servico',     label: 'Serviço',      Icon: Wrench },
+  { value: 'outro',       label: 'Outro',        Icon: Package },
+] as const;
+
 const PAYER_TYPES_REC = [
   { value: 'customer',   label: 'Pessoa',     Icon: User },
   { value: 'instructor', label: 'Instrutor',  Icon: UserCheck },
@@ -56,10 +63,10 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
   onClose: () => void;
   onSave: (d: unknown) => void;
 }) {
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
   const [form, setForm] = useState({
     payer_type: '', payer_id: '', plane_id: '',
-    title: '', description: '', product: 'voo',
+    title: '', description: '', product: '',
     expiration_date: '', total_amount: '',
     recurrence: '', occurrences: '2',
   });
@@ -68,10 +75,11 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
   const payerList = payerLists[form.payer_type] ?? [];
 
   function goNext() {
-    if (step === 1 && !form.payer_type) { toast.error('Selecione o tipo de pagador'); return; }
-    if (step === 2 && !form.payer_id) { toast.error('Selecione o pagador'); return; }
-    if (step === 3 && !form.title.trim()) { toast.error('Título é obrigatório'); return; }
-    setStep(s => (s + 1) as 1 | 2 | 3 | 4 | 5);
+    if (step === 1 && !form.product) { toast.error('Selecione o tipo de título'); return; }
+    if (step === 2 && !form.payer_type) { toast.error('Selecione o tipo de pagador'); return; }
+    if (step === 3 && !form.payer_id) { toast.error('Selecione o pagador'); return; }
+    if (step === 4 && !form.title.trim()) { toast.error('Título é obrigatório'); return; }
+    setStep(s => (s + 1) as 1 | 2 | 3 | 4 | 5 | 6);
   }
 
   return (
@@ -81,10 +89,10 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
           <div className="flex items-center gap-3">
             <h3 className="text-[15px] font-semibold m-0">Novo título a receber</h3>
             <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((n, i) => (
+              {[1, 2, 3, 4, 5, 6].map((n, i) => (
                 <span key={n} className="flex items-center gap-1">
                   <span className={`w-5 h-5 rounded-full text-[11px] font-semibold flex items-center justify-center transition-colors ${step === n ? 'bg-accent text-white' : step > n ? 'bg-success text-white' : 'bg-bg-sunk text-ink-3'}`}>{n}</span>
-                  {i < 4 && <ChevronRight size={10} className="text-ink-4" />}
+                  {i < 5 && <ChevronRight size={10} className="text-ink-4" />}
                 </span>
               ))}
             </div>
@@ -94,6 +102,24 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
 
         <div className={modalBody}>
           {step === 1 && (
+            <div className="grid grid-cols-2 gap-2.5">
+              {PRODUCT_TYPES_REC.map(({ value, label, Icon }) => {
+                const active = form.product === value;
+                return (
+                  <button
+                    key={value}
+                    className={`flex flex-col items-center gap-2 py-5 px-2 rounded-lg border-2 cursor-pointer transition-colors ${active ? 'border-accent bg-accent-soft' : 'border-line bg-bg hover:bg-bg-hover'}`}
+                    onClick={() => setForm(f => ({ ...f, product: value }))}
+                  >
+                    <Icon size={24} className={active ? 'text-accent' : 'text-ink-3'} />
+                    <span className={`text-[12px] font-medium ${active ? 'text-accent-ink' : 'text-ink-2'}`}>{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {step === 2 && (
             <div className="grid grid-cols-3 gap-2.5">
               {PAYER_TYPES_REC.map(({ value, label, Icon }) => {
                 const active = form.payer_type === value;
@@ -111,7 +137,7 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
             </div>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <div className={field}>
               <label className={lbl}>Selecionar pagador</label>
               <select className={sel} value={form.payer_id} onChange={e => setForm(f => ({ ...f, payer_id: e.target.value }))}>
@@ -121,13 +147,8 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <>
-              <div className={field}><label className={lbl}>Tipo</label>
-                <select className={sel} value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}>
-                  <option value="voo">Voo</option><option value="mensalidade">Mensalidade</option><option value="servico">Serviço</option><option value="outro">Outro</option>
-                </select>
-              </div>
               <div className={field}><label className={lbl}>Título</label>
                 <input className={inp} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
               </div>
@@ -148,7 +169,7 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
             </>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <div className={field}>
               <label className={lbl}>Aeronave</label>
               <select className={sel} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
@@ -158,7 +179,7 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
             </div>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <div className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className={field}><label className={lbl}>Repetir</label>
@@ -184,11 +205,11 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
 
         <div className={modalFoot} style={{ justifyContent: step === 1 ? 'space-between' : 'space-between' }}>
           <div>
-            {step > 1 && <button className={btnCancel} onClick={() => setStep(s => (s - 1) as 1 | 2 | 3 | 4 | 5)}><ChevronLeft size={14} /> Voltar</button>}
+            {step > 1 && <button className={btnCancel} onClick={() => setStep(s => (s - 1) as 1 | 2 | 3 | 4 | 5 | 6)}><ChevronLeft size={14} /> Voltar</button>}
           </div>
           <div className="flex items-center gap-2">
             {step === 1 && <button className={btnCancel} onClick={onClose}>Cancelar</button>}
-            {step < 5
+            {step < 6
               ? <button className={btnPrimary} onClick={goNext}>Próximo <ChevronRight size={14} /></button>
               : <button className={btnPrimary} onClick={() => onSave({
                 payer_type: form.payer_type,
