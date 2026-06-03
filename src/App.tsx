@@ -63,9 +63,9 @@ export default function App() {
                 <Route path="invoices/:id" element={<InvoiceDetail />} />
                 <Route path="cnab" element={<Cnab />} />
                 <Route path="reports" element={<Reports />} />
-                <Route path="perfil" element={<Profile />} />
+                <Route path="profile" element={<Profile />} />
                 <Route path="settings" element={<Settings />} />
-                <Route path="usuarios" element={<Users />} />
+                <Route path="users" element={<Users />} />
               </Route>
               <Route path="*" element={<Navigate to="/dashboard" replace />} />
             </Routes>

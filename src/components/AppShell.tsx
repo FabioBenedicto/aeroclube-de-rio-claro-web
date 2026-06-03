@@ -1,47 +1,50 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Home, ArrowDownLeft, ArrowUpRight, FileText, Plane, Radar, Users, Building2, Settings, LogOut, UserCog, Pencil, BarChart2, Landmark } from 'lucide-react';
+import {
+  Home, ArrowDownLeft, ArrowUpRight, FileText, Plane, Radar,
+  Users, Building2, Settings, LogOut, UserCog, Pencil, BarChart2, Landmark,
+} from 'lucide-react';
 import { cn } from '../utils/cn';
 import Toaster from './Toaster';
 import { PERM } from '../utils/permissions';
 
 const NAV = [
-  { group: 'Financeiro', items: [
-    { path: '/dashboard',   label: 'Dashboard',        Icon: Home },
-    { path: '/receivables', label: 'Títulos a receber', Icon: ArrowDownLeft,  permission: PERM.RECEIVABLES.VIEW },
-    { path: '/payables',    label: 'Títulos a pagar',   Icon: ArrowUpRight,   permission: PERM.PAYABLES.VIEW },
-    { path: '/invoices',    label: 'Faturas',          Icon: FileText,       permission: PERM.INVOICES.VIEW },
-    { path: '/cnab',        label: 'CNAB',             Icon: Landmark,       adminOnly: true },
+  { group: 'Financial', items: [
+    { path: '/dashboard',   label: 'Dashboard',   Icon: Home },
+    { path: '/receivables', label: 'Receivables', Icon: ArrowDownLeft, permission: PERM.RECEIVABLES.VIEW },
+    { path: '/payables',    label: 'Payables',    Icon: ArrowUpRight,  permission: PERM.PAYABLES.VIEW },
+    { path: '/invoices',    label: 'Invoices',    Icon: FileText,      permission: PERM.INVOICES.VIEW },
+    { path: '/cnab',        label: 'CNAB',        Icon: Landmark,      adminOnly: true },
   ]},
-  { group: 'Operação', items: [
-    { path: '/flights',   label: 'Voos',       Icon: Plane,      permission: PERM.FLIGHTS.VIEW },
-    { path: '/planes',    label: 'Aeronaves',  Icon: Radar,      permission: PERM.PLANES.VIEW },
-    { path: '/pessoas',   label: 'Pessoas',    Icon: Users,      permission: PERM.CUSTOMERS.VIEW },
-    { path: '/companies', label: 'Empresas',   Icon: Building2,  permission: PERM.COMPANIES.VIEW },
+  { group: 'Operations', items: [
+    { path: '/flights',   label: 'Flights',   Icon: Plane,     permission: PERM.FLIGHTS.VIEW },
+    { path: '/planes',    label: 'Aircraft',  Icon: Radar,     permission: PERM.PLANES.VIEW },
+    { path: '/peoples',   label: 'People',    Icon: Users,     permission: PERM.CUSTOMERS.VIEW },
+    { path: '/companies', label: 'Companies', Icon: Building2, permission: PERM.COMPANIES.VIEW },
   ]},
-  { group: 'Análise', items: [
-    { path: '/reports', label: 'Relatórios', Icon: BarChart2, permission: PERM.REPORTS.VIEW },
+  { group: 'Analytics', items: [
+    { path: '/reports', label: 'Reports', Icon: BarChart2, permission: PERM.REPORTS.VIEW },
   ]},
-  { group: 'Sistema', items: [
-    { path: '/settings',  label: 'Configurações', Icon: Settings, adminOnly: true },
-    { path: '/usuarios',  label: 'Usuários',      Icon: UserCog,  adminOnly: true },
+  { group: 'System', items: [
+    { path: '/settings', label: 'Settings', Icon: Settings, adminOnly: true },
+    { path: '/users',    label: 'Users',    Icon: UserCog,  adminOnly: true },
   ]},
 ];
 
 const CRUMB_MAP: Record<string, string[]> = {
-  '/dashboard':   ['Aeroclube', 'Financeiro', 'Dashboard'],
-  '/receivables': ['Aeroclube', 'Financeiro', 'Títulos a receber'],
-  '/payables':    ['Aeroclube', 'Financeiro', 'Títulos a pagar'],
-  '/invoices':    ['Aeroclube', 'Financeiro', 'Faturas'],
-  '/cnab':        ['Aeroclube', 'Financeiro', 'CNAB'],
-  '/flights':     ['Aeroclube', 'Operação', 'Voos'],
-  '/reports':     ['Aeroclube', 'Análise', 'Relatórios'],
-  '/planes':      ['Aeroclube', 'Operação', 'Aeronaves'],
-  '/pessoas':     ['Aeroclube', 'Operação', 'Pessoas'],
-  '/companies':   ['Aeroclube', 'Operação', 'Empresas'],
-  '/settings':    ['Aeroclube', 'Configurações'],
-  '/usuarios':    ['Aeroclube', 'Sistema', 'Usuários'],
-  '/perfil':      ['Aeroclube', 'Meu perfil'],
+  '/dashboard':   ['Aeroclube', 'Financial',  'Dashboard'],
+  '/receivables': ['Aeroclube', 'Financial',  'Receivables'],
+  '/payables':    ['Aeroclube', 'Financial',  'Payables'],
+  '/invoices':    ['Aeroclube', 'Financial',  'Invoices'],
+  '/cnab':        ['Aeroclube', 'Financial',  'CNAB'],
+  '/flights':     ['Aeroclube', 'Operations', 'Flights'],
+  '/planes':      ['Aeroclube', 'Operations', 'Aircraft'],
+  '/peoples':     ['Aeroclube', 'Operations', 'People'],
+  '/companies':   ['Aeroclube', 'Operations', 'Companies'],
+  '/reports':     ['Aeroclube', 'Analytics',  'Reports'],
+  '/settings':    ['Aeroclube', 'Settings'],
+  '/users':       ['Aeroclube', 'System',     'Users'],
+  '/profile':     ['Aeroclube', 'My Profile'],
 };
 
 export default function AppShell() {
@@ -60,12 +63,11 @@ export default function AppShell() {
 
   return (
     <div className="grid min-h-screen" style={{ gridTemplateColumns: '232px 1fr' }}>
-      {/* Sidebar */}
       <aside className="bg-bg-elev border-r border-line flex flex-col sticky top-0 h-screen overflow-hidden">
         <div className="flex items-center gap-2.5 px-[18px] py-[18px] pb-4 border-b border-line">
           <div>
             <div className="font-semibold text-[13px] tracking-tight leading-tight">Aeroclube de Rio&nbsp;Claro</div>
-            <div className="text-[10.5px] text-ink-3 tracking-[0.04em] uppercase mt-0.5">Sistema Financeiro</div>
+            <div className="text-[10.5px] text-ink-3 tracking-[0.04em] uppercase mt-0.5">Financial System</div>
           </div>
         </div>
 
@@ -108,19 +110,19 @@ export default function AppShell() {
             <div className="flex-1 min-w-0">
               <div className="text-[12.5px] font-medium overflow-hidden text-ellipsis whitespace-nowrap">{user?.name}</div>
               <div className="text-[10.5px] text-ink-3 uppercase tracking-[0.02em]">
-                {user?.role === 'ADMIN' ? 'Administrador' : 'Funcionário'}
+                {user?.role === 'ADMIN' ? 'Admin' : 'Employee'}
               </div>
             </div>
             <button
               className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink"
-              title="Meu perfil"
-              onClick={() => navigate('/perfil')}
+              title="My profile"
+              onClick={() => navigate('/profile')}
             >
               <Pencil size={13} />
             </button>
             <button
               className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink"
-              title="Sair"
+              title="Sign out"
               onClick={handleLogout}
             >
               <LogOut size={14} />
@@ -129,15 +131,18 @@ export default function AppShell() {
         </div>
       </aside>
 
-      {/* Main */}
       <main className="flex flex-col min-w-0">
-        <div className="flex items-center gap-3 px-6 py-3 border-b border-line sticky top-0 z-[5] min-h-[52px]"
-          style={{ background: 'color-mix(in oklch, var(--bg-elev), transparent 5%)', backdropFilter: 'blur(8px)' }}>
+        <div
+          className="flex items-center gap-3 px-6 py-3 border-b border-line sticky top-0 z-[5] min-h-[52px]"
+          style={{ background: 'color-mix(in oklch, var(--bg-elev), transparent 5%)', backdropFilter: 'blur(8px)' }}
+        >
           <nav className="flex items-center gap-1.5 text-[12.5px] text-ink-3">
             {crumbs.map((c, i) => (
               <span key={i} className="flex items-center gap-1.5">
                 {i > 0 && <span className="opacity-40">/</span>}
-                {i === crumbs.length - 1 ? <strong className="text-ink font-medium">{c}</strong> : <span>{c}</span>}
+                {i === crumbs.length - 1
+                  ? <strong className="text-ink font-medium">{c}</strong>
+                  : <span>{c}</span>}
               </span>
             ))}
           </nav>
