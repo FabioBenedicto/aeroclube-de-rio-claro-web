@@ -1079,7 +1079,7 @@ export default function CustomerDetail() {
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
               <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Voos</div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
                   <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
                   <div className="flex flex-col gap-0.5">
@@ -1094,11 +1094,21 @@ export default function CustomerDetail() {
                     <div className="text-[20px] font-bold tracking-tight font-mono">{formatHours(flights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0))}</div>
                   </div>
                 </div>
+              </div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mt-1">Mensalidades</div>
+              <div className="grid grid-cols-2 gap-3">
                 <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><Calendar size={18} /></div>
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Calendar size={18} /></div>
                   <div className="flex flex-col gap-0.5">
-                    <div className="text-[12px] text-ink-3 font-medium">Mensalidades pagas</div>
-                    <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(mensalidadesRecebidas)}</div>
+                    <div className="text-[12px] text-ink-3 font-medium">Quantidade</div>
+                    <div className="text-[20px] font-bold tracking-tight">{mensalidadeRecs.length}</div>
+                  </div>
+                </div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><BarChart3 size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Valor total</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(mensalidadesTotal)}</div>
                   </div>
                 </div>
               </div>
