@@ -943,47 +943,51 @@ export default function CustomerDetail() {
         {/* ── ALUNO ── */}
         {activeRoleTab === 'aluno' && (
           <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Voos</div>
-                  <div className="text-[20px] font-bold tracking-tight">{flights.length}</div>
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Voos</div>
+                    <div className="text-[20px] font-bold tracking-tight">{flights.length}</div>
+                  </div>
+                </div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Timer size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Horas de voo</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono">{formatHours(flights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0))}</div>
+                  </div>
                 </div>
               </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Timer size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Horas de voo</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono">{formatHours(flights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0))}</div>
+              <div className="grid grid-cols-4 gap-3">
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Recebido</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalRecebido)}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Recebido</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalRecebido)}</div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Clock size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">A receber</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAberto)}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Clock size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">A receber</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAberto)}</div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-danger-soft text-danger"><ArrowUpRight size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Pago</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono text-danger"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalPago)}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-danger-soft text-danger"><ArrowUpRight size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Pago</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono text-danger"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalPago)}</div>
-                </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Hourglass size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">A pagar</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAPagar)}</div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Hourglass size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">A pagar</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAPagar)}</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1071,54 +1075,58 @@ export default function CustomerDetail() {
         {/* ── SÓCIO ── */}
         {activeRoleTab === 'socio' && (
           <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-4 gap-3">
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Voos</div>
-                  <div className="text-[20px] font-bold tracking-tight">{flights.length}</div>
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Voos</div>
+                    <div className="text-[20px] font-bold tracking-tight">{flights.length}</div>
+                  </div>
+                </div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Timer size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Horas de voo</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono">{formatHours(flights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0))}</div>
+                  </div>
+                </div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><Calendar size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Mensalidades pagas</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(mensalidadesRecebidas)}</div>
+                  </div>
                 </div>
               </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Timer size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Horas de voo</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono">{formatHours(flights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0))}</div>
+              <div className="grid grid-cols-4 gap-3">
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Recebido</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalRecebido)}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><Calendar size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Mensalidades pagas</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(mensalidadesRecebidas)}</div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Clock size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">A receber</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAberto)}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Recebido</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalRecebido)}</div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-danger-soft text-danger"><ArrowUpRight size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Pago</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono text-danger"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalPago)}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Clock size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">A receber</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAberto)}</div>
-                </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-danger-soft text-danger"><ArrowUpRight size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Pago</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono text-danger"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalPago)}</div>
-                </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Hourglass size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">A pagar</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAPagar)}</div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Hourglass size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">A pagar</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAPagar)}</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1217,40 +1225,44 @@ export default function CustomerDetail() {
         {/* ── INSTRUTOR ── */}
         {activeRoleTab === 'instrutor' && (
           <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Voos instruídos</div>
-                  <div className="text-[20px] font-bold tracking-tight">{instructorFlights.length}</div>
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Voos instruídos</div>
+                    <div className="text-[20px] font-bold tracking-tight">{instructorFlights.length}</div>
+                  </div>
+                </div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Timer size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Horas instruídas</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono">{formatHours(instrHours)}</div>
+                  </div>
+                </div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><TrendingUp size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Receita</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(instrReceita)}</div>
+                  </div>
                 </div>
               </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Timer size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Horas instruídas</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono">{formatHours(instrHours)}</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Remuneração recebida</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(remuneracaoRecebida)}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><TrendingUp size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Receita</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(instrReceita)}</div>
-                </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Remuneração recebida</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(remuneracaoRecebida)}</div>
-                </div>
-              </div>
-              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Clock size={18} /></div>
-                <div className="flex flex-col gap-0.5">
-                  <div className="text-[12px] text-ink-3 font-medium">Remuneração a receber</div>
-                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(remuneracaoAReceber)}</div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Clock size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Remuneração a receber</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(remuneracaoAReceber)}</div>
+                  </div>
                 </div>
               </div>
             </div>
