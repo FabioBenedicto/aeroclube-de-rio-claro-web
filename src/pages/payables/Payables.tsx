@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MoreHorizontal, Trash2, Check as CheckIcon, Eye, X } from 'lucide-react';
+import { Plus, MoreHorizontal, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus } from 'lucide-react';
 import { getPayables, createPayable, deletePayable, registerPayablePayment } from '../../api/payables';
 import Checkbox from '../../components/ui/Checkbox';
 import PayModal from '../../components/PayModal';
@@ -37,6 +37,15 @@ const btnCancel = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-
 const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90';
 const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 
+const PAYER_TYPES_PAY = [
+  { value: 'none',       label: 'Nenhum',     Icon: Minus },
+  { value: 'customer',   label: 'Pessoa',     Icon: User },
+  { value: 'instructor', label: 'Instrutor',  Icon: UserCheck },
+  { value: 'partner',    label: 'Sócio',      Icon: Users },
+  { value: 'employee',   label: 'Funcionário',Icon: Briefcase },
+  { value: 'company',    label: 'Empresa',    Icon: Building2 },
+] as const;
+
 function NewPayableModal({ customers, instructors, partners, employees, planes, companies, onClose, onSave }: {
   customers: NamedOption[];
   instructors: NamedOption[];
@@ -47,6 +56,7 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
   onClose: () => void;
   onSave: (d: unknown) => void;
 }) {
+  const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState({
     payer_type: 'none', payer_id: '', plane_id: '',
     title: '', description: '', amount: '', due_date: '',
@@ -56,111 +66,153 @@ function NewPayableModal({ customers, instructors, partners, employees, planes, 
   const payerLists: Record<string, NamedOption[]> = { customer: customers, company: companies, instructor: instructors, partner: partners, employee: employees };
   const payerList = payerLists[form.payer_type] ?? [];
 
+  function goNext() {
+    if (form.payer_type !== 'none' && !form.payer_id) {
+      toast.error('Selecione o recebedor');
+      return;
+    }
+    setStep(2);
+  }
+
   return (
     <div className={modalBase} onClick={onClose}>
       <div className={modalPanel} onClick={e => e.stopPropagation()}>
         <div className={modalHead}>
-          <h3 className="text-[15px] font-semibold m-0">Novo título a pagar</h3>
+          <div className="flex items-center gap-3">
+            <h3 className="text-[15px] font-semibold m-0">Novo título a pagar</h3>
+            <div className="flex items-center gap-1.5">
+              {(['Recebedor', 'Título'] as const).map((label, i) => {
+                const n = (i + 1) as 1 | 2;
+                return (
+                  <span key={n} className="flex items-center gap-1.5">
+                    <span className={`w-5 h-5 rounded-full text-[11px] font-semibold flex items-center justify-center transition-colors ${step === n ? 'bg-accent text-white' : step > n ? 'bg-success text-white' : 'bg-bg-sunk text-ink-3'}`}>{n}</span>
+                    <span className={`text-[11px] ${step === n ? 'text-ink font-medium' : 'text-ink-3'}`}>{label}</span>
+                    {i < 1 && <ChevronRight size={12} className="text-ink-4" />}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
           <button className={iconBtn} onClick={onClose}><X size={16} /></button>
         </div>
+
         <div className={modalBody}>
-          <div className={field}><label className={lbl}>Tipo</label>
-            <select className={sel} value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}>
-              <option value="servico">Serviço</option><option value="instrucao">Instrução</option><option value="manutencao">Manutenção</option><option value="outro">Outro</option>
-            </select>
-          </div>
-          <div className={field}><label className={lbl}>Título</label>
-            <input className={inp} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
-          </div>
-          <div className={field}><label className={lbl}>Descrição</label>
-            <textarea className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] resize-y min-h-[60px]" rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className={field}><label className={lbl}>Vencimento</label>
-              <DateInput value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} />
-            </div>
-            <div className={field}><label className={lbl}>Valor</label>
-              <div className="flex rounded-md border border-line overflow-hidden focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus)]">
-                <span className="flex items-center px-2.5 text-[13px] text-ink-3 bg-bg-sunk border-r border-line">R$</span>
-                <input inputMode="numeric" className="flex-1 px-2.5 py-[7px] border-0 bg-bg-elev text-ink text-[13px] font-mono outline-none" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: maskCurrency(e.target.value) }))} />
+          {step === 1 && (
+            <>
+              <div className="grid grid-cols-3 gap-2.5">
+                {PAYER_TYPES_PAY.map(({ value, label, Icon }) => {
+                  const active = form.payer_type === value;
+                  return (
+                    <button
+                      key={value}
+                      className={`flex flex-col items-center gap-2 py-4 px-2 rounded-lg border-2 cursor-pointer transition-colors ${active ? 'border-accent bg-accent-soft' : 'border-line bg-bg hover:bg-bg-hover'}`}
+                      onClick={() => setForm(f => ({ ...f, payer_type: value, payer_id: '' }))}
+                    >
+                      <Icon size={22} className={active ? 'text-accent' : 'text-ink-3'} />
+                      <span className={`text-[12px] font-medium ${active ? 'text-accent-ink' : 'text-ink-2'}`}>{label}</span>
+                    </button>
+                  );
+                })}
               </div>
-            </div>
-          </div>
-
-          <div className="border-t border-line pt-3.5 flex flex-col gap-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Recebedor</div>
-            <div className={field}>
-              <select className={sel} value={form.payer_type} onChange={e => setForm(f => ({ ...f, payer_type: e.target.value, payer_id: '' }))}>
-                <option value="none">Nenhum</option>
-                <option value="customer">Pessoa</option>
-                <option value="instructor">Instrutor</option>
-                <option value="partner">Sócio</option>
-                <option value="employee">Funcionário</option>
-                <option value="company">Empresa</option>
-              </select>
-            </div>
-            {form.payer_type !== 'none' && (
-              <div className={field}>
-                <select className={sel} value={form.payer_id} onChange={e => setForm(f => ({ ...f, payer_id: e.target.value }))}>
-                  <option value="">Selecione</option>
-                  {payerList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-line pt-3.5 flex flex-col gap-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Aeronave</div>
-            <div className={field}>
-              <select className={sel} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
-                <option value="">Sem aeronave</option>
-                {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div className="border-t border-line pt-3.5 flex flex-col gap-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Recorrência</div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className={field}><label className={lbl}>Repetir</label>
-                <select className={sel} value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))}>
-                  <option value="">Sem recorrência</option>
-                  <option value="monthly">Mensal</option><option value="weekly">Semanal</option><option value="yearly">Anual</option>
-                </select>
-              </div>
-              {form.recurrence && (
-                <div className={field}><label className={lbl}>Nº de ocorrências</label>
-                  <input type="number" className={inp + ' font-mono'} min={2} max={60} value={form.occurrences} onChange={e => setForm(f => ({ ...f, occurrences: e.target.value }))} />
+              {form.payer_type !== 'none' && (
+                <div className={field}>
+                  <label className={lbl}>Selecionar</label>
+                  <select className={sel} value={form.payer_id} onChange={e => setForm(f => ({ ...f, payer_id: e.target.value }))}>
+                    <option value="">Selecione</option>
+                    {payerList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
                 </div>
               )}
-            </div>
-            {form.recurrence && (
-              <div className="text-[12px] text-ink-3">
-                Serão criados <strong>{form.occurrences}</strong> títulos com vencimentos {form.recurrence === 'monthly' ? 'mensais' : form.recurrence === 'weekly' ? 'semanais' : 'anuais'}, a partir da data informada.
+            </>
+          )}
+
+          {step === 2 && (
+            <>
+              <div className={field}><label className={lbl}>Tipo</label>
+                <select className={sel} value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}>
+                  <option value="servico">Serviço</option><option value="instrucao">Instrução</option><option value="manutencao">Manutenção</option><option value="outro">Outro</option>
+                </select>
               </div>
-            )}
-          </div>
+              <div className={field}><label className={lbl}>Título</label>
+                <input className={inp} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+              </div>
+              <div className={field}><label className={lbl}>Descrição</label>
+                <textarea className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] resize-y min-h-[60px]" rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className={field}><label className={lbl}>Vencimento</label>
+                  <DateInput value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} />
+                </div>
+                <div className={field}><label className={lbl}>Valor</label>
+                  <div className="flex rounded-md border border-line overflow-hidden focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus)]">
+                    <span className="flex items-center px-2.5 text-[13px] text-ink-3 bg-bg-sunk border-r border-line">R$</span>
+                    <input inputMode="numeric" className="flex-1 px-2.5 py-[7px] border-0 bg-bg-elev text-ink text-[13px] font-mono outline-none" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: maskCurrency(e.target.value) }))} />
+                  </div>
+                </div>
+              </div>
+              <div className="border-t border-line pt-3.5 flex flex-col gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Aeronave</div>
+                <div className={field}>
+                  <select className={sel} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
+                    <option value="">Sem aeronave</option>
+                    {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="border-t border-line pt-3.5 flex flex-col gap-3">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Recorrência</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className={field}><label className={lbl}>Repetir</label>
+                    <select className={sel} value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))}>
+                      <option value="">Sem recorrência</option>
+                      <option value="monthly">Mensal</option><option value="weekly">Semanal</option><option value="yearly">Anual</option>
+                    </select>
+                  </div>
+                  {form.recurrence && (
+                    <div className={field}><label className={lbl}>Nº de ocorrências</label>
+                      <input type="number" className={inp + ' font-mono'} min={2} max={60} value={form.occurrences} onChange={e => setForm(f => ({ ...f, occurrences: e.target.value }))} />
+                    </div>
+                  )}
+                </div>
+                {form.recurrence && (
+                  <div className="text-[12px] text-ink-3">
+                    Serão criados <strong>{form.occurrences}</strong> títulos com vencimentos {form.recurrence === 'monthly' ? 'mensais' : form.recurrence === 'weekly' ? 'semanais' : 'anuais'}, a partir da data informada.
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </div>
-        <div className={modalFoot}>
-          <button className={btnCancel} onClick={onClose}>Cancelar</button>
-          <button className={btnPrimary} onClick={() => onSave({
-            payer_type: form.payer_type,
-            ...(form.payer_type === 'customer' && form.payer_id && { client_id: Number(form.payer_id) }),
-            ...(form.payer_type === 'company' && form.payer_id && { company_id: Number(form.payer_id) }),
-            ...(form.payer_type === 'instructor' && form.payer_id && { instructor_id: Number(form.payer_id) }),
-            ...(form.payer_type === 'partner' && form.payer_id && { partner_id: Number(form.payer_id) }),
-            ...(form.payer_type === 'employee' && form.payer_id && { employee_id: Number(form.payer_id) }),
-            plane_id: form.plane_id ? Number(form.plane_id) : undefined,
-            title: form.title,
-            description: form.description || undefined,
-            amount: parseCurrency(form.amount),
-            due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined,
-            product: form.product,
-            recurrence: form.recurrence || undefined,
-            occurrences: form.recurrence ? Number(form.occurrences) : undefined,
-          })}>
-            <CheckIcon size={14} /> Criar título
-          </button>
+
+        <div className={modalFoot} style={{ justifyContent: step === 1 ? 'space-between' : 'flex-end' }}>
+          {step === 1 ? (
+            <>
+              <button className={btnCancel} onClick={onClose}>Cancelar</button>
+              <button className={btnPrimary} onClick={goNext}>Próximo <ChevronRight size={14} /></button>
+            </>
+          ) : (
+            <>
+              <button className={btnCancel} onClick={() => setStep(1)}><ChevronLeft size={14} /> Voltar</button>
+              <button className={btnPrimary} onClick={() => onSave({
+                payer_type: form.payer_type,
+                ...(form.payer_type === 'customer' && form.payer_id && { client_id: Number(form.payer_id) }),
+                ...(form.payer_type === 'company' && form.payer_id && { company_id: Number(form.payer_id) }),
+                ...(form.payer_type === 'instructor' && form.payer_id && { instructor_id: Number(form.payer_id) }),
+                ...(form.payer_type === 'partner' && form.payer_id && { partner_id: Number(form.payer_id) }),
+                ...(form.payer_type === 'employee' && form.payer_id && { employee_id: Number(form.payer_id) }),
+                plane_id: form.plane_id ? Number(form.plane_id) : undefined,
+                title: form.title,
+                description: form.description || undefined,
+                amount: parseCurrency(form.amount),
+                due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined,
+                product: form.product,
+                recurrence: form.recurrence || undefined,
+                occurrences: form.recurrence ? Number(form.occurrences) : undefined,
+              })}>
+                <CheckIcon size={14} /> Criar título
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
