@@ -944,6 +944,7 @@ export default function CustomerDetail() {
         {activeRoleTab === 'aluno' && (
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Voos</div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
                   <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
@@ -960,6 +961,7 @@ export default function CustomerDetail() {
                   </div>
                 </div>
               </div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mt-1">Financeiro</div>
               <div className="grid grid-cols-4 gap-3">
                 <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
                   <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
@@ -1076,6 +1078,7 @@ export default function CustomerDetail() {
         {activeRoleTab === 'socio' && (
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Voos</div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
                   <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
@@ -1099,6 +1102,7 @@ export default function CustomerDetail() {
                   </div>
                 </div>
               </div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mt-1">Financeiro</div>
               <div className="grid grid-cols-4 gap-3">
                 <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
                   <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
@@ -1226,6 +1230,7 @@ export default function CustomerDetail() {
         {activeRoleTab === 'instrutor' && (
           <div className="flex flex-col gap-6">
             <div className="flex flex-col gap-2">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Voos</div>
               <div className="grid grid-cols-3 gap-3">
                 <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
                   <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
@@ -1249,6 +1254,7 @@ export default function CustomerDetail() {
                   </div>
                 </div>
               </div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mt-1">Remuneração</div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
                   <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
@@ -1332,6 +1338,8 @@ export default function CustomerDetail() {
         {/* ── FUNCIONÁRIO ── */}
         {activeRoleTab === 'funcionario' && (
           <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Financeiro</div>
             <div className="grid grid-cols-4 gap-3">
               <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
                 <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
@@ -1361,6 +1369,7 @@ export default function CustomerDetail() {
                   <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(empAPagar)}</div>
                 </div>
               </div>
+            </div>
             </div>
             <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
               <div className="overflow-x-auto">
