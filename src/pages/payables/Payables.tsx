@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MoreHorizontal, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Wrench, BookOpen, Settings, Package, BarChart3, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
+import { Plus, MoreHorizontal, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Wrench, BookOpen, Settings, Package, BarChart3, ArrowUpRight, Hourglass, AlertCircle } from 'lucide-react';
 import { getPayables, createPayable, deletePayable, registerPayablePayment } from '../../api/payables';
 import Checkbox from '../../components/ui/Checkbox';
 import PayModal from '../../components/PayModal';
@@ -333,33 +333,33 @@ export default function Payables() {
       </div>
 
       <div className="grid grid-cols-4 gap-3">
-        <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="flex items-center justify-between mb-1">
+        <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><BarChart3 size={18} /></div>
+          <div className="flex flex-col gap-0.5">
             <div className="text-[12px] text-ink-3 font-medium">Valor total</div>
-            <BarChart3 size={15} className="text-ink-4" />
+            <div className="text-[20px] font-bold tracking-tight font-mono"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(total)}</div>
           </div>
-          <div className="text-[24px] font-bold tracking-tight font-mono"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total)}</div>
         </div>
-        <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="flex items-center justify-between mb-1">
+        <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-danger-soft text-danger"><ArrowUpRight size={18} /></div>
+          <div className="flex flex-col gap-0.5">
             <div className="text-[12px] text-ink-3 font-medium">Valor pago</div>
-            <CheckCircle2 size={15} className="text-success" />
+            <div className="text-[20px] font-bold tracking-tight font-mono text-danger"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(paid)}</div>
           </div>
-          <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: paid > 0 ? 'var(--success)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(paid)}</div>
         </div>
-        <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="flex items-center justify-between mb-1">
+        <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Hourglass size={18} /></div>
+          <div className="flex flex-col gap-0.5">
             <div className="text-[12px] text-ink-3 font-medium">Valor a pagar</div>
-            <Clock size={15} className="text-warn" />
+            <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(total - paid)}</div>
           </div>
-          <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: (total - paid) > 0 ? 'var(--warn)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(total - paid)}</div>
         </div>
-        <div className="bg-bg-elev border border-line rounded-lg p-4">
-          <div className="flex items-center justify-between mb-1">
+        <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+          <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-danger-soft text-danger"><AlertCircle size={18} /></div>
+          <div className="flex flex-col gap-0.5">
             <div className="text-[12px] text-ink-3 font-medium">Valor vencido</div>
-            <AlertCircle size={15} className="text-danger" />
+            <div className="text-[20px] font-bold tracking-tight font-mono text-danger"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(overdue)}</div>
           </div>
-          <div className="text-[24px] font-bold tracking-tight font-mono" style={{ color: overdue > 0 ? 'var(--danger)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(overdue)}</div>
         </div>
       </div>
 
