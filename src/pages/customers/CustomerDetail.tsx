@@ -676,6 +676,7 @@ export default function CustomerDetail() {
   const remuneracaoAReceber = instructorPayables.reduce((s, p) => s + Math.max(0, Number(p.amount) - Number(p.amount_paid)), 0);
   const instrHours = instructorFlights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0);
   const instrReceita = instructorFlights.reduce((s, f) => s + Number(f.total_amount ?? 0), 0);
+  const instrComissoesTotal = instructorPayables.reduce((s, p) => s + Number(p.amount), 0);
 
   const instrVoosResult = pageItems(instructorFlights, tabPages['voos_instrutor'] ?? 1);
   const instrPayResult = pageItems(instructorPayables, tabPages['titulos_instrutor'] ?? 1);
@@ -1254,6 +1255,23 @@ export default function CustomerDetail() {
                   <div className="flex flex-col gap-0.5">
                     <div className="text-[12px] text-ink-3 font-medium">Horas instruídas</div>
                     <div className="text-[20px] font-bold tracking-tight font-mono">{formatHours(instrHours)}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mt-1">Comissões</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Calendar size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Quantidade</div>
+                    <div className="text-[20px] font-bold tracking-tight">{instructorPayables.length}</div>
+                  </div>
+                </div>
+                <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><BarChart3 size={18} /></div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="text-[12px] text-ink-3 font-medium">Total</div>
+                    <div className="text-[20px] font-bold tracking-tight font-mono"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(instrComissoesTotal)}</div>
                   </div>
                 </div>
               </div>
