@@ -12,6 +12,9 @@ import { PERM } from '../../utils/permissions';
 import { toast, extractErrorMessage } from '../../utils/toast';
 import Checkbox from '../../components/ui/Checkbox';
 import { CompanyModal } from './CompanyModal';
+import Table, { type TableColumn } from '../../components/ui/Table';
+import PageHeader from '../../components/ui/PageHeader';
+import Button from '../../components/ui/Button';
 
 type MenuState = { id: number; top: number; right: number };
 
@@ -70,21 +73,69 @@ export default function Companies() {
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(allIds));
   const toggleOne = (id: number) => setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
+  const columns: TableColumn<Company>[] = [
+    {
+      key: 'checkbox',
+      label: '',
+      headerClassName: 'w-9',
+      cellClassName: 'w-9',
+      stopPropagation: true,
+      render: row => <Checkbox checked={selected.has(row.id)} onChange={() => toggleOne(row.id)} />,
+    },
+    {
+      key: 'id',
+      label: 'ID',
+      render: row => <span className="font-mono text-[11.5px]">{row.id}</span>,
+    },
+    {
+      key: 'name',
+      label: 'Nome',
+      render: row => <span className="font-medium text-ink">{row.name}</span>,
+    },
+    {
+      key: 'cnpj',
+      label: 'CNPJ',
+      render: row => <span className="font-mono text-[12px]">{row.cnpj ?? '—'}</span>,
+    },
+    {
+      key: 'email',
+      label: 'E-mail',
+      render: row => row.email ?? '—',
+    },
+    {
+      key: 'phone',
+      label: 'Telefone',
+      render: row => row.phone ?? '—',
+    },
+    {
+      key: 'actions',
+      label: '',
+      headerClassName: 'w-10',
+      cellClassName: 'w-10',
+      stopPropagation: true,
+      render: row => (
+        <Button variant="icon" onClick={e => {
+          e.stopPropagation();
+          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setMenuState(s => s?.id === row.id ? null : { id: row.id, top: r.bottom + 4, right: window.innerWidth - r.right });
+        }}>
+          <MoreHorizontal size={15} />
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">Empresas</h1>
-          <p className="text-[13px] text-ink-3 mt-1 m-0">Fornecedores e parceiros associados a títulos</p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-{can(PERM.COMPANIES.CREATE) && (
-            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90" onClick={() => setModal('new')}>
-              <Plus size={14} /> Nova empresa
-            </button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title="Empresas"
+        description="Fornecedores e parceiros associados a títulos"
+        action={can(PERM.COMPANIES.CREATE) ? (
+          <Button variant="primary" onClick={() => setModal('new')}>
+            <Plus size={14} /> Nova empresa
+          </Button>
+        ) : undefined}
+      />
 
       <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-4">
       <div className="flex items-center gap-3 justify-end">
@@ -97,11 +148,14 @@ export default function Companies() {
           <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">até</span>
           <DateInput value={pendingTo} onChange={setPendingTo} />
         </div>
-        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90" onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); setPage(1); }}>Aplicar</button>
+        <Button variant="primary" onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); setPage(1); }}>Aplicar</Button>
       </div>
 
       <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2.5 border-b border-line flex-wrap">
+          <div className="px-3.5 py-2 flex items-center">
+            <Checkbox checked={allSelected} onChange={toggleAll} />
+          </div>
           <div className="flex-1" />
           <div className="relative flex items-center">
             <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
@@ -109,57 +163,27 @@ export default function Companies() {
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="py-8 text-center text-[13px] text-ink-3">Carregando…</div>
-        ) : (
-          <>
-            {selected.size > 0 && (
-              <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
-                <span className="text-[13px] font-medium text-accent-ink">{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
-                <span className="flex-1" />
-                {can(PERM.COMPANIES.DELETE) && (
-                  <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-danger border border-danger text-white cursor-pointer hover:opacity-90" onClick={() => bulkDeleteMut.mutate([...selected])}>
-                    <Trash2 size={14} /> Remover selecionados
-                  </button>
-                )}
-              </div>
+        {selected.size > 0 && (
+          <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
+            <span className="text-[13px] font-medium text-accent-ink">{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
+            <span className="flex-1" />
+            {can(PERM.COMPANIES.DELETE) && (
+              <Button variant="danger" onClick={() => bulkDeleteMut.mutate([...selected])}>
+                <Trash2 size={14} /> Remover selecionados
+              </Button>
             )}
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]">
-                <thead>
-                  <tr>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line w-9"><Checkbox checked={allSelected} onChange={toggleAll} /></th>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Nome</th>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">CNPJ</th>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">E-mail</th>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Telefone</th>
-                    <th className="px-3.5 py-2.5 bg-bg border-b border-line w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {companies.map(c => (
-                    <tr key={c.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/companies/${c.id}`)}>
-                      <td className="px-3.5 py-2.5 border-b border-line w-9" onClick={e => e.stopPropagation()}><Checkbox checked={selected.has(c.id)} onChange={() => toggleOne(c.id)} /></td>
-                      <td className="px-3.5 py-2.5 border-b border-line font-medium text-ink">{c.name}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line font-mono text-[12px]">{c.cnpj ?? '—'}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line text-[13px]">{c.email ?? '—'}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line text-[13px]">{c.phone ?? '—'}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line w-10" onClick={e => e.stopPropagation()}>
-                        <button className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={e => {
-                          e.stopPropagation();
-                          const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                          setMenuState(s => s?.id === c.id ? null : { id: c.id, top: r.bottom + 4, right: window.innerWidth - r.right });
-                        }}><MoreHorizontal size={15} /></button>
-                      </td>
-                    </tr>
-                  ))}
-                  {companies.length === 0 && <tr><td colSpan={6} className="px-3.5 py-8 text-center text-ink-3">Nenhuma empresa encontrada.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-            <Pagination page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} limit={20} onChange={setPage} />
-          </>
+          </div>
         )}
+
+        <Table
+          columns={columns}
+          data={companies}
+          keyField="id"
+          onRowClick={c => navigate(`/companies/${c.id}`)}
+          emptyMessage="Nenhuma empresa encontrada."
+          isLoading={isLoading}
+        />
+        <Pagination page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} limit={20} onChange={setPage} />
       </div>
 
       </div>

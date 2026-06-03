@@ -18,15 +18,14 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PERM } from '../../utils/permissions';
 import { toast, extractErrorMessage } from '../../utils/toast';
 import { NewPayableModal } from './NewPayableModal';
+import Table, { type TableColumn } from '../../components/ui/Table';
+import PageHeader from '../../components/ui/PageHeader';
+import Button from '../../components/ui/Button';
 
 type NamedOption = { id: number; name: string };
 const P_STATUS_LABEL: Record<string, string> = { open: 'A pagar', partial: 'Parcial', closed: 'Pago' };
 const P_STATUS_BADGE: Record<string, string> = { open: 'warn', partial: 'accent', closed: 'success' };
 type MenuState = { id: number; top: number; right: number };
-
-const lbl = 'text-[12px] font-medium text-ink-2';
-const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90';
-const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 
 export default function Payables() {
   const navigate = useNavigate();
@@ -102,30 +101,115 @@ export default function Payables() {
 
   const TABS_P = [['all', 'Todos'], ['open', 'A pagar'], ['partial', 'Parcial'], ['closed', 'Pagos'], ['overdue', 'Vencidos']] as const;
 
+  const columns: TableColumn<Payable>[] = [
+    {
+      key: 'checkbox',
+      label: '',
+      headerClassName: 'w-9',
+      cellClassName: 'w-9',
+      stopPropagation: true,
+      render: row => <Checkbox checked={selected.has(row.id)} onChange={() => toggleOne(row.id)} />,
+    },
+    {
+      key: 'id',
+      label: 'ID',
+      render: row => <span className="font-mono text-[11.5px]">{row.id}</span>,
+    },
+    {
+      key: 'title',
+      label: 'Título',
+      render: row => <span className="font-medium text-ink">{row.title}</span>,
+    },
+    {
+      key: 'product',
+      label: 'Tipo',
+      render: row => row.product ? <span className="inline-flex items-center px-1.5 py-px rounded-[3px] text-[11px] font-medium bg-bg-sunk text-ink-3 border border-line">{row.product}</span> : '—',
+    },
+    {
+      key: 'payer',
+      label: 'Recebedor',
+      render: row => <span className="text-[12px] text-ink-3">{row.customer?.name ?? row.company?.name ?? row.instructor?.customer?.name ?? '—'}</span>,
+    },
+    {
+      key: 'due_date',
+      label: 'Vencimento',
+      render: row => <span className="font-mono text-[12px]">{row.due_date ? formatDate(row.due_date) : '—'}</span>,
+    },
+    {
+      key: 'amount',
+      label: 'Valor',
+      headerClassName: 'text-right',
+      cellClassName: 'text-right font-mono',
+      render: row => `R$ ${formatBRL(row.amount)}`,
+    },
+    {
+      key: 'amount_paid',
+      label: 'Pago',
+      headerClassName: 'text-right',
+      cellClassName: 'text-right font-mono',
+      render: row => `R$ ${formatBRL(row.amount_paid)}`,
+    },
+    {
+      key: 'progress',
+      label: 'Progresso',
+      headerClassName: 'w-32',
+      cellClassName: 'w-32',
+      render: row => {
+        const pct = Number(row.amount) > 0 ? Math.min(100, (Number(row.amount_paid) / Number(row.amount)) * 100) : 0;
+        const color = row.status === 'closed' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--line)';
+        return (
+          <div className="flex items-center gap-1.5">
+            <div className="flex-1 h-1.5 rounded-full bg-bg-sunk overflow-hidden">
+              <div style={{ width: `${pct}%`, background: color, height: '100%', borderRadius: 9999, transition: 'width 0.3s' }} />
+            </div>
+            <span className="text-[11px] font-mono text-ink-3 w-8 text-right">{Math.round(pct)}%</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: row => (
+        <Badge variant={P_STATUS_BADGE[row.status] as 'success' | 'warn' | 'danger' | 'accent' | 'default' ?? 'default'}>{P_STATUS_LABEL[row.status] ?? row.status}</Badge>
+      ),
+    },
+    {
+      key: 'actions',
+      label: '',
+      headerClassName: 'w-10',
+      cellClassName: 'w-10',
+      stopPropagation: true,
+      render: row => (
+        <Button variant="icon" onClick={e => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setMenuState(s => s?.id === row.id ? null : { id: row.id, top: r.bottom + 4, right: window.innerWidth - r.right }); }}>
+          <MoreHorizontal size={15} />
+        </Button>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">Títulos a pagar</h1>
-          <p className="text-[13px] text-ink-3 mt-1 m-0">Títulos a pagar a instrutores e fornecedores</p>
-        </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
-{can(PERM.PAYABLES.CREATE) && <button className={btnPrimary} onClick={() => setNewModal(true)}><Plus size={14} /> Novo título</button>}
-        </div>
-      </div>
+      <PageHeader
+        title="Títulos a pagar"
+        description="Títulos a pagar a instrutores e fornecedores"
+        action={can(PERM.PAYABLES.CREATE) ? (
+          <Button variant="primary" onClick={() => setNewModal(true)}><Plus size={14} /> Novo título</Button>
+        ) : undefined}
+      />
 
       <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-4">
       <div className="flex items-center gap-3 justify-end">
-        <span className={lbl + ' whitespace-nowrap'}>Criação</span>
+        <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Criação</span>
         <div className="flex items-center gap-2">
-          <span className={lbl + ' whitespace-nowrap'}>de</span>
+          <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">de</span>
           <DateInput value={pendingFrom} onChange={setPendingFrom} />
         </div>
         <div className="flex items-center gap-2">
-          <span className={lbl + ' whitespace-nowrap'}>Até</span>
+          <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Até</span>
           <DateInput value={pendingTo} onChange={setPendingTo} />
         </div>
-        <button className={btnPrimary} onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); }}>Aplicar</button>
+        <Button variant="primary" onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); }}>Aplicar</Button>
       </div>
 
       <div className="grid grid-cols-4 gap-3">
@@ -161,7 +245,10 @@ export default function Payables() {
 
       <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
         <div className="flex items-center gap-2 px-3 py-2.5 border-b border-line flex-wrap">
-          <div className="flex">
+          <div className="flex items-center">
+            <div className="px-3.5 py-2 flex items-center">
+              <Checkbox checked={allSelected} onChange={toggleAll} />
+            </div>
             {TABS_P.map(([k, l]) => (
               <button key={k}
                 className="px-3.5 py-2 text-[13px] font-medium cursor-pointer bg-transparent border-0 border-b-2 whitespace-nowrap"
@@ -177,76 +264,27 @@ export default function Payables() {
           </div>
         </div>
 
-        {isLoading ? <div className="py-8 text-center text-[13px] text-ink-3">Carregando…</div> : (
-          <>
-            {selected.size > 0 && (
-              <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
-                <span className="text-[13px] font-medium text-accent-ink">{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
-                <span className="flex-1" />
-                {can(PERM.PAYABLES.DELETE) && (
-                  <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-danger border border-danger text-white cursor-pointer hover:opacity-90" onClick={() => bulkDeleteMut.mutate([...selected])}>
-                    <Trash2 size={14} /> Remover selecionados
-                  </button>
-                )}
-              </div>
+        {selected.size > 0 && (
+          <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
+            <span className="text-[13px] font-medium text-accent-ink">{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
+            <span className="flex-1" />
+            {can(PERM.PAYABLES.DELETE) && (
+              <Button variant="danger" onClick={() => bulkDeleteMut.mutate([...selected])}>
+                <Trash2 size={14} /> Remover selecionados
+              </Button>
             )}
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-[13px]">
-                <thead>
-                  <tr>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line w-9"><Checkbox checked={allSelected} onChange={toggleAll} /></th>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">ID</th>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Título</th>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Tipo</th>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Recebedor</th>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Vencimento</th>
-                    <th className="px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Valor</th>
-                    <th className="px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Pago</th>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line w-32">Progresso</th>
-                    <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Status</th>
-                    <th className="px-3.5 py-2.5 bg-bg border-b border-line w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {payables.map(p => (
-                    <tr key={p.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/payables/${p.id}`)}>
-                      <td className="px-3.5 py-2.5 border-b border-line w-9" onClick={e => e.stopPropagation()}><Checkbox checked={selected.has(p.id)} onChange={() => toggleOne(p.id)} /></td>
-                      <td className="px-3.5 py-2.5 border-b border-line font-mono text-[11.5px]">{p.id}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line font-medium text-ink">{p.title}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line">{p.product ? <span className="inline-flex items-center px-1.5 py-px rounded-[3px] text-[11px] font-medium bg-bg-sunk text-ink-3 border border-line">{p.product}</span> : '—'}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line text-[12px] text-ink-3">{p.customer?.name ?? p.company?.name ?? p.instructor?.customer?.name ?? '—'}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line font-mono text-[12px]">{p.due_date ? formatDate(p.due_date) : '—'}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">R$ {formatBRL(p.amount)}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">{`R$ ${formatBRL(p.amount_paid)}`}</td>
-                      <td className="px-3.5 py-2.5 border-b border-line w-32">
-                        {(() => {
-                          const pct = Number(p.amount) > 0 ? Math.min(100, (Number(p.amount_paid) / Number(p.amount)) * 100) : 0;
-                          const color = p.status === 'closed' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--line)';
-                          return (
-                            <div className="flex items-center gap-1.5">
-                              <div className="flex-1 h-1.5 rounded-full bg-bg-sunk overflow-hidden">
-                                <div style={{ width: `${pct}%`, background: color, height: '100%', borderRadius: 9999, transition: 'width 0.3s' }} />
-                              </div>
-                              <span className="text-[11px] font-mono text-ink-3 w-8 text-right">{Math.round(pct)}%</span>
-                            </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-3.5 py-2.5 border-b border-line">
-                        <Badge variant={P_STATUS_BADGE[p.status] as 'success' | 'warn' | 'danger' | 'accent' | 'default' ?? 'default'}>{P_STATUS_LABEL[p.status] ?? p.status}</Badge>
-                      </td>
-                      <td className="px-3.5 py-2.5 border-b border-line w-10" onClick={e => e.stopPropagation()}>
-                        <button className={iconBtn} onClick={e => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setMenuState(s => s?.id === p.id ? null : { id: p.id, top: r.bottom + 4, right: window.innerWidth - r.right }); }}><MoreHorizontal size={15} /></button>
-                      </td>
-                    </tr>
-                  ))}
-                  {payables.length === 0 && <tr><td colSpan={11} className="px-3.5 py-8 text-center text-ink-3">Nenhum título encontrado.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-            <Pagination page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} limit={20} onChange={setPage} />
-          </>
+          </div>
         )}
+
+        <Table
+          columns={columns}
+          data={payables}
+          keyField="id"
+          onRowClick={p => navigate(`/payables/${p.id}`)}
+          emptyMessage="Nenhum título encontrado."
+          isLoading={isLoading}
+        />
+        <Pagination page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} limit={20} onChange={setPage} />
       </div>
       </div>
 

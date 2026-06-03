@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Edit } from 'lucide-react';
+import { Plus, Trash2, Edit, MoreHorizontal } from 'lucide-react';
 import { getUsers, deleteUser } from '../../api/users';
 import type { UserRecord } from '../../api/users';
 import RowMenu, { RowMenuSep } from '../../components/RowMenu';
 import UserModal from './UserModal';
 import DateInput from '../../components/DateInput';
 import Pagination from '../../components/Pagination';
+import Badge from '../../components/ui/Badge';
 import { toast, extractErrorMessage } from '../../utils/toast';
+import Table, { type TableColumn } from '../../components/ui/Table';
+import PageHeader from '../../components/ui/PageHeader';
+import Button from '../../components/ui/Button';
 
 type MenuState = { id: number; top: number; right: number };
 
@@ -58,20 +62,65 @@ export default function Users() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const rows = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
+  const columns: TableColumn<UserRecord>[] = [
+    {
+      key: 'id',
+      label: 'ID',
+      render: row => <span className="font-mono text-[11.5px]">{row.id}</span>,
+    },
+    {
+      key: 'name',
+      label: 'Nome',
+      render: row => <span className="font-medium">{row.name}</span>,
+    },
+    {
+      key: 'email',
+      label: 'E-mail',
+      render: row => <span className="text-ink-2">{row.email}</span>,
+    },
+    {
+      key: 'role',
+      label: 'Papel',
+      render: row => (
+        <Badge variant={row.role === 'ADMIN' ? 'accent' : 'default'}>
+          {row.role === 'ADMIN' ? 'Administrador' : 'Funcionário'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'created_at',
+      label: 'Criado em',
+      render: row => <span className="text-ink-3">{new Date(row.created_at).toLocaleDateString('pt-BR')}</span>,
+    },
+    {
+      key: 'actions',
+      label: '',
+      headerClassName: 'w-10',
+      cellClassName: 'w-10',
+      stopPropagation: true,
+      render: row => row.role !== 'ADMIN' ? (
+        <Button variant="icon" onClick={e => {
+          e.stopPropagation();
+          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+          setMenuState(s => s?.id === row.id ? null : { id: row.id, top: rect.bottom + 4, right: window.innerWidth - rect.right });
+        }}>
+          <MoreHorizontal size={15} />
+        </Button>
+      ) : null,
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">Usuários</h1>
-          <p className="text-[13px] text-ink-3 mt-1 m-0">Contas de acesso ao sistema</p>
-        </div>
-        <button
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90"
-          onClick={() => setModal({ mode: 'new' })}
-        >
-          <Plus size={14} /> Novo usuário
-        </button>
-      </div>
+      <PageHeader
+        title="Usuários"
+        description="Contas de acesso ao sistema"
+        action={
+          <Button variant="primary" onClick={() => setModal({ mode: 'new' })}>
+            <Plus size={14} /> Novo usuário
+          </Button>
+        }
+      />
 
       <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-4">
         <div className="flex items-center gap-3 justify-end">
@@ -84,7 +133,7 @@ export default function Users() {
             <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Até</span>
             <DateInput value={pendingTo} onChange={setPendingTo} />
           </div>
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90" onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); setPage(1); }}>Aplicar</button>
+          <Button variant="primary" onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); setPage(1); }}>Aplicar</Button>
         </div>
 
         <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
@@ -100,55 +149,14 @@ export default function Users() {
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="py-8 text-center text-[13px] text-ink-3">Carregando…</div>
-          ) : (
-            <>
-              <table className="w-full border-collapse text-[13px]">
-                <thead>
-                  <tr>
-                    <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Nome</th>
-                    <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">E-mail</th>
-                    <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Papel</th>
-                    <th className="text-left px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Criado em</th>
-                    <th className="w-10 bg-bg border-b border-line" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((u) => (
-                    <tr key={u.id} className="border-b border-line last:border-0 hover:bg-bg-hover transition-colors duration-75">
-                      <td className="px-4 py-2.5 font-medium">{u.name}</td>
-                      <td className="px-4 py-2.5 text-ink-2">{u.email}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium ${u.role === 'ADMIN' ? 'bg-accent-soft text-accent-ink' : 'bg-bg-sunk text-ink-2'}`}>
-                          {u.role === 'ADMIN' ? 'Administrador' : 'Funcionário'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-ink-3">{new Date(u.created_at).toLocaleDateString('pt-BR')}</td>
-                      <td className="px-4 py-2.5 text-right">
-                        {u.role !== 'ADMIN' && (
-                          <button
-                            className="inline-flex items-center justify-center w-6 h-6 rounded border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                              setMenuState(s => s?.id === u.id ? null : { id: u.id, top: rect.bottom + 4, right: window.innerWidth - rect.right });
-                            }}
-                          >
-                            ⋯
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                  {rows.length === 0 && (
-                    <tr><td colSpan={5} className="px-4 py-8 text-center text-ink-3">Nenhum usuário encontrado.</td></tr>
-                  )}
-                </tbody>
-              </table>
-              <Pagination page={page} totalPages={totalPages} total={filtered.length} limit={PAGE_SIZE} onChange={setPage} />
-            </>
-          )}
+          <Table
+            columns={columns}
+            data={rows}
+            keyField="id"
+            emptyMessage="Nenhum usuário encontrado."
+            isLoading={isLoading}
+          />
+          <Pagination page={page} totalPages={totalPages} total={filtered.length} limit={PAGE_SIZE} onChange={setPage} />
         </div>
       </div>
 
