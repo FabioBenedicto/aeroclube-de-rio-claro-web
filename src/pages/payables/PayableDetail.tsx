@@ -1,15 +1,24 @@
-import { useState, useRef } from 'react';
+import { useState, type ElementType } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Trash2, Check as CheckIcon, Paperclip, ExternalLink } from 'lucide-react';
-import { getPayable, deletePayablePayment, registerPayablePayment, uploadPayablePaymentNotaFiscal, deletePayablePaymentNotaFiscal } from '../../api/payables';
+import { ChevronLeft, Check as CheckIcon, X, Edit, Wrench, BookOpen, Settings, Package } from 'lucide-react';
+import { getPayable, updatePayable, deletePayablePayment, registerPayablePayment, uploadPayablePaymentNotaFiscal, deletePayablePaymentNotaFiscal } from '../../api/payables';
+import PaymentRowMenu from '../../components/PaymentRowMenu';
+import DateInput from '../../components/DateInput';
+import type { Payable as PayableType } from '../../types';
 import { formatBRL, formatDate, formatDateTime } from '../../utils/format';
 import PayModal from '../../components/PayModal';
 import Badge from '../../components/ui/Badge';
+import { toast, extractErrorMessage } from '../../utils/toast';
 
 type BadgeVariant = 'success' | 'warn' | 'danger' | 'accent' | 'default';
 
-const UPLOADS_BASE = 'http://localhost:3001';
+const PAY_PRODUCT_MAP: Record<string, { label: string; Icon: ElementType }> = {
+  servico:    { label: 'Serviço',    Icon: Wrench   },
+  instrucao:  { label: 'Instrução',  Icon: BookOpen },
+  manutencao: { label: 'Manutenção', Icon: Settings },
+  outro:      { label: 'Outro',      Icon: Package  },
+};
 
 const P_STATUS_LABEL: Record<string, string> = { open: 'A pagar', partial: 'Parcial', closed: 'Pago' };
 const P_STATUS_BADGE: Record<string, string> = { open: 'warn', partial: 'accent', closed: 'success' };
@@ -18,38 +27,69 @@ const thCls = 'px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase track
 const thNumCls = 'px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
 const tdCls = 'px-3.5 py-2.5 border-b border-line';
 const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
+const inputCls = 'w-full px-3 py-1.5 text-[13px] bg-bg border border-line rounded-md text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] transition-[border-color,box-shadow] duration-100 placeholder:text-ink-3';
+const btnCancel = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink';
+const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90';
 
-function NfCell({ paymentId, payableId, path, onChanged }: {
-  paymentId: number; payableId: number; path?: string | null; onChanged: () => void;
+function PayRow({ p, payableId, onDelete, onNfChanged }: {
+  p: { id: number; paid_at: string; method?: string | null; amount: number; nota_fiscal_path?: string | null };
+  payableId: number; onDelete: () => void; onNfChanged: () => void;
 }) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const uploadMut = useMutation({
-    mutationFn: (file: File) => uploadPayablePaymentNotaFiscal(payableId, paymentId, file),
-    onSuccess: onChanged,
-  });
-  const deleteMut = useMutation({
-    mutationFn: () => deletePayablePaymentNotaFiscal(payableId, paymentId),
-    onSuccess: onChanged,
-  });
+  const uploadMut  = useMutation({ mutationFn: (f: File) => uploadPayablePaymentNotaFiscal(payableId, p.id, f), onSuccess: onNfChanged, onError: (e: unknown) => toast.error(extractErrorMessage(e)) });
+  const deleteNfMut = useMutation({ mutationFn: () => deletePayablePaymentNotaFiscal(payableId, p.id), onSuccess: onNfChanged, onError: (e: unknown) => toast.error(extractErrorMessage(e)) });
   return (
-    <td className={`${tdCls} whitespace-nowrap`}>
-      {path ? (
-        <span className="flex items-center gap-1">
-          <a href={`${UPLOADS_BASE}${path}`} target="_blank" rel="noopener noreferrer" className="text-accent flex items-center gap-0.5 text-[12px] hover:underline">
-            <Paperclip size={12} /> NF <ExternalLink size={11} />
-          </a>
-          <button className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-danger cursor-pointer hover:bg-bg-hover" onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}>
-            <Trash2 size={12} />
-          </button>
-        </span>
-      ) : (
-        <button className={iconBtn} title="Anexar NF" onClick={() => fileRef.current?.click()} disabled={uploadMut.isPending}>
-          <Paperclip size={13} />
-        </button>
-      )}
-      <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) uploadMut.mutate(f); e.target.value = ''; }} />
-    </td>
+    <tr className="hover:bg-bg-hover">
+      <td className={`${tdCls} font-mono text-[12px]`}>{formatDateTime(p.paid_at)}</td>
+      <td className={tdCls}>{p.method ?? '—'}</td>
+      <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(p.amount)}</td>
+      <td className={`${tdCls} text-right pr-2`} style={{ width: 44 }}>
+        <PaymentRowMenu
+          nfPath={p.nota_fiscal_path}
+          onAddNf={f => uploadMut.mutate(f)}
+          onRemoveNf={() => deleteNfMut.mutate()}
+          onDelete={onDelete}
+          uploadPending={uploadMut.isPending}
+          nfDeletePending={deleteNfMut.isPending}
+        />
+      </td>
+    </tr>
+  );
+}
+
+function EditPayableModal({ payable, onClose, onSave }: { payable: PayableType; onClose: () => void; onSave: (d: unknown) => void }) {
+  const [form, setForm] = useState({ title: payable.title, due_date: payable.due_date?.slice(0, 10) ?? '', amount: String(payable.amount) });
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-bg-elev border border-line rounded-[10px] w-full max-w-[480px] shadow-[var(--shadow)] flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
+          <h3 className="text-[15px] font-semibold m-0">Editar título</h3>
+          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+        </div>
+        <div className="px-5 py-4 overflow-y-auto flex-1 flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-medium text-ink-2">Descrição</label>
+            <input className={inputCls} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-medium text-ink-2">Vencimento</label>
+              <DateInput value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-medium text-ink-2">Valor</label>
+              <div className="flex items-stretch overflow-hidden border border-line rounded-md focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus)] transition-[border-color,box-shadow] duration-100">
+                <span className="flex items-center px-2.5 text-[13px] text-ink-3 bg-bg border-r border-line select-none">R$</span>
+                <input type="number" step="0.01" className="flex-1 px-3 py-1.5 text-[13px] font-mono bg-bg text-ink outline-none border-0" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
+          <button className={btnCancel} onClick={onClose}>Cancelar</button>
+          <button className={btnPrimary} onClick={() => onSave({ title: form.title, due_date: form.due_date || undefined, amount: parseFloat(form.amount) })}><CheckIcon size={14} /> Salvar</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -59,6 +99,7 @@ export default function PayableDetail() {
   const qc = useQueryClient();
   const payableId = Number(id);
   const [showPay, setShowPay] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   const { data: payable, isLoading } = useQuery({
     queryKey: ['payable', payableId],
@@ -68,11 +109,18 @@ export default function PayableDetail() {
   const deletePaymentMut = useMutation({
     mutationFn: (paymentId: number) => deletePayablePayment(payableId, paymentId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['payable', payableId] }),
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
   const payMut = useMutation({
     mutationFn: (d: unknown) => registerPayablePayment(payableId, d as { amount: number; method?: string; paid_at?: string }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payable', payableId] }); setShowPay(false); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
+  });
+  const editMut = useMutation({
+    mutationFn: (d: unknown) => updatePayable(payableId, d),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['payable', payableId] }); setShowEdit(false); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
   if (isLoading) return <div className="p-8 text-[13px] text-ink-3">Carregando…</div>;
@@ -94,16 +142,17 @@ export default function PayableDetail() {
           </button>
           <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">{payable.id} · {payable.title}</h1>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2">
-            {payable.product && <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-bg-sunk border border-line text-ink-2">{payable.product}</span>}
+            {payable.product && (() => { const p = PAY_PRODUCT_MAP[payable.product!]; return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium bg-bg-sunk border border-line text-ink-2">{p && <p.Icon size={11} />}{p?.label ?? payable.product}</span>; })()}
             <span className="text-[13px] text-ink-3 font-mono text-[12px]">Vencimento {payable.due_date ? formatDate(payable.due_date) : '—'}</span>
             <Badge variant={(badge) as BadgeVariant}>{label}</Badge>
           </div>
         </div>
-        {payable.status !== 'closed' && (
-          <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button className={btnCancel} onClick={() => setShowEdit(true)}><Edit size={14} /> Editar</button>
+          {payable.status !== 'closed' && (
             <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90" onClick={() => setShowPay(true)}><CheckIcon size={14} /> Pagar</button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {payable.description && (
@@ -203,24 +252,24 @@ export default function PayableDetail() {
             </div>
           </div>
           <div className="bg-bg-elev border border-line rounded-lg p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">Já pago</div>
-            <div className="text-[22px] font-bold tracking-[-0.02em] mt-1 font-mono text-success">
-              <span className="text-[14px] mr-0.5 font-medium">R$</span>{formatBRL(payable.amount_paid)}
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">Valor pago</div>
+            <div className="text-[22px] font-bold tracking-[-0.02em] mt-1 font-mono" style={{ color: 'var(--success)' }}>
+              <span className="text-[14px] mr-0.5 font-medium" style={{ color: 'var(--success)' }}>R$</span>{formatBRL(payable.amount_paid)}
             </div>
           </div>
           <div className="bg-bg-elev border border-line rounded-lg p-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">Saldo devedor</div>
-            <div className="text-[22px] font-bold tracking-[-0.02em] mt-1 font-mono" style={{ color: balance > 0 ? 'var(--danger)' : undefined }}>
-              <span className="text-[14px] text-ink-3 mr-0.5 font-medium">R$</span>{formatBRL(balance)}
+            <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">Valor a pagar</div>
+            <div className="text-[22px] font-bold tracking-[-0.02em] mt-1 font-mono" style={{ color: 'var(--warn)' }}>
+              <span className="text-[14px] mr-0.5 font-medium" style={{ color: 'var(--warn)' }}>R$</span>{formatBRL(balance)}
             </div>
           </div>
           <div className="bg-bg-elev border border-line rounded-lg p-4">
             <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">Progresso</div>
-            <div className="flex items-center gap-2 mt-2">
+            <div className="flex items-center gap-2 mt-3">
               <div className="flex-1 h-1.5 bg-bg-sunk rounded-full overflow-hidden">
-                <div className="h-full bg-accent rounded-full" style={{ width: `${pct}%` }} />
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: payable.status === 'closed' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--line)', transition: 'width 0.3s' }} />
               </div>
-              <span className="font-mono text-[13px] font-semibold">{pct}%</span>
+              <span className="font-mono text-[13px] font-semibold" style={{ color: payable.status === 'closed' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : undefined }}>{pct}%</span>
             </div>
           </div>
         </div>
@@ -236,32 +285,18 @@ export default function PayableDetail() {
                   <th className={thCls}>Data</th>
                   <th className={thCls}>Forma de pagamento</th>
                   <th className={thNumCls}>Valor pago</th>
-                  <th className={thCls} style={{ width: 60 }}>NF</th>
-                  <th className={thCls} style={{ width: 40 }} />
+                  <th className={thCls} style={{ width: 44 }} />
                 </tr>
               </thead>
               <tbody>
                 {(payable.payments ?? []).map(p => (
-                  <tr key={p.id} className="hover:bg-bg-hover">
-                    <td className={`${tdCls} font-mono text-[12px]`}>{formatDateTime(p.paid_at)}</td>
-                    <td className={tdCls}>{p.method ?? '—'}</td>
-                    <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(p.amount)}</td>
-                    <NfCell
-                      paymentId={p.id}
-                      payableId={payableId}
-                      path={p.nota_fiscal_path}
-                      onChanged={() => qc.invalidateQueries({ queryKey: ['payable', payableId] })}
-                    />
-                    <td className={tdCls}>
-                      <button
-                        className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-danger cursor-pointer hover:bg-bg-hover"
-                        onClick={() => deletePaymentMut.mutate(p.id)}
-                        disabled={deletePaymentMut.isPending}
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </td>
-                  </tr>
+                  <PayRow
+                    key={p.id}
+                    p={p}
+                    payableId={payableId}
+                    onDelete={() => deletePaymentMut.mutate(p.id)}
+                    onNfChanged={() => qc.invalidateQueries({ queryKey: ['payable', payableId] })}
+                  />
                 ))}
                 {(payable.payments ?? []).length === 0 && (
                   <tr>
@@ -282,6 +317,7 @@ export default function PayableDetail() {
       </div>
 
       {showPay && <PayModal payable={payable} onClose={() => setShowPay(false)} onSave={d => payMut.mutate(d)} />}
+      {showEdit && <EditPayableModal payable={payable} onClose={() => setShowEdit(false)} onSave={d => editMut.mutate(d)} />}
     </div>
   );
 }
