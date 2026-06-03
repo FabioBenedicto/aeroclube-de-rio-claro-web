@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Plus, Check, X, Edit, Trash2, MoreHorizontal, Eye, ChevronRight, Plane as PlaneIcon, Timer, TrendingUp, ArrowDownLeft, Clock, ArrowUpRight, Hourglass, BarChart3, Calendar } from 'lucide-react';
+import { ChevronLeft, Plus, Check, X, Edit, Trash2, MoreHorizontal, Eye, ChevronRight, Plane as PlaneIcon, Timer, ArrowDownLeft, Clock, ArrowUpRight, Hourglass, BarChart3, Calendar } from 'lucide-react';
 import { getPerson, getPersonCredits, getPeoples, updatePerson } from '../../api/peoples';
 import { createReceivable, updateReceivable, deleteReceivable, registerPayment } from '../../api/receivables';
 import { getPayables, deletePayable, registerPayablePayment } from '../../api/payables';
@@ -10,7 +10,7 @@ import { createBill, deleteBill, getBillsByCustomer } from '../../api/invoices';
 import { getPlanes } from '../../api/planes';
 import DateInput from '../../components/DateInput';
 import PayModal from '../../components/PayModal';
-import { formatBRL, formatDate, formatDateTime, formatHours, receivableStatus, STATUS_LABEL, STATUS_BADGE } from '../../utils/format';
+import { formatBRL, formatDate, formatHours, receivableStatus, STATUS_LABEL, STATUS_BADGE } from '../../utils/format';
 import FlightModal from '../flights/FlightModal';
 import CloseFlightModal from '../flights/CloseFlightModal';
 import RowMenu, { RowMenuSep } from '../../components/RowMenu';
@@ -18,7 +18,7 @@ import Pagination from '../../components/Pagination';
 import Badge from '../../components/ui/Badge';
 import Chip from '../../components/ui/Chip';
 import Checkbox from '../../components/ui/Checkbox';
-import type { Receivable, Flight, Bill, Payable } from '../../types';
+import type { Receivable, Flight, Payable } from '../../types';
 import PersonModal from './PersonModal';
 import { toast, extractErrorMessage } from '../../utils/toast';
 
@@ -30,7 +30,6 @@ const P_STATUS_LABEL: Record<string, string> = { open: 'A pagar', partial: 'Parc
 const P_STATUS_BADGE: Record<string, string> = { open: 'warn', partial: 'accent', closed: 'success' };
 
 const inputCls = 'w-full px-3 py-1.5 text-[13px] bg-bg border border-line rounded-md text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] transition-[border-color,box-shadow] duration-100 placeholder:text-ink-3';
-const textareaCls = 'w-full px-3 py-2 text-[13px] bg-bg border border-line rounded-md text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] transition-[border-color,box-shadow] duration-100 resize-y min-h-[80px]';
 const btnCancel = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink';
 const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90';
 const btnDanger = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-danger border border-danger text-white cursor-pointer hover:opacity-90';
@@ -433,7 +432,7 @@ export default function PersonDetail() {
   const { data: credits } = useQuery({ queryKey: ['credits', personId], queryFn: () => getPersonCredits(personId) });
   const { data: billsResponse } = useQuery({ queryKey: ['bills', personId], queryFn: () => getBillsByCustomer(personId) });
   const bills = billsResponse?.data ?? [];
-  const { data: planesResponse } = useQuery({ queryKey: ['planes'], queryFn: getPlanes });
+  const { data: planesResponse } = useQuery({ queryKey: ['planes'], queryFn: () => getPlanes() });
   const planes = planesResponse?.data ?? [];
   const { data: allCustomersResponse } = useQuery({ queryKey: ['peoples'], queryFn: () => getPeoples() });
   const allPeoples = allCustomersResponse?.data ?? [];
@@ -605,7 +604,7 @@ export default function PersonDetail() {
   const menuFatura = faturaMenu ? bills.find(b => b.id === faturaMenu.id) ?? null : null;
   const menuPayable = payableMenu ? customerPayables.find(p => p.id === payableMenu.id) ?? null : null;
 
-  function openMenu(setter: (s: MenuState | null) => void, id: number, e: React.MouseEvent) {
+  function openMenu(setter: React.Dispatch<React.SetStateAction<MenuState | null>>, id: number, e: React.MouseEvent) {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setter(s => s?.id === id ? null : { id, top: r.bottom + 4, right: window.innerWidth - r.right });
   }
@@ -669,20 +668,14 @@ export default function PersonDetail() {
 
   const mensalidadeRecs = payerReceivables.filter(r => r.product === 'mensalidade');
   const mensalidadesTotal = mensalidadeRecs.reduce((s, r) => s + Number(r.total_amount), 0);
-  const mensalidadesRecebidas = mensalidadeRecs.reduce((s, r) => s + Number(r.amount_received), 0);
-  const mensalidadesPendentes = Math.max(0, mensalidadesTotal - mensalidadesRecebidas);
 
   const empAPagar = employeePayables.reduce((s, p) => s + Math.max(0, Number(p.amount) - Number(p.amount_paid)), 0);
   const empPago = employeePayables.reduce((s, p) => s + Number(p.amount_paid), 0);
-  const remuneracaoRecebida = instructorPayables.reduce((s, p) => s + Number(p.amount_paid), 0);
-  const remuneracaoAReceber = instructorPayables.reduce((s, p) => s + Math.max(0, Number(p.amount) - Number(p.amount_paid)), 0);
   const instrHours = instructorFlights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0);
-  const instrReceita = instructorFlights.reduce((s, f) => s + Number(f.total_amount ?? 0), 0);
   const instrComissoesTotal = instructorPayables.reduce((s, p) => s + Number(p.amount), 0);
 
   const instrVoosResult = pageItems(instructorFlights, tabPages['voos_instrutor'] ?? 1);
   const instrPayResult = pageItems(instructorPayables, tabPages['titulos_instrutor'] ?? 1);
-  const mensalidadesResult = pageItems(mensalidadeRecs, tabPages['mensalidades'] ?? 1);
   const empPayResult = pageItems(employeePayables, tabPages['func_pagar'] ?? 1);
 
   const ROLE_TABS = [
@@ -903,7 +896,7 @@ export default function PersonDetail() {
                           <td className={`${tdCls} font-mono text-[12px]`}>{formatDate(b.issue_date)}</td>
                           <td className={`${tdCls} font-mono text-[12px]`}>{b.due_date ? formatDate(b.due_date) : '—'}</td>
                           <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(b.total_amount)}</td>
-                          <td className={`${tdCls} text-ink-3 text-[13px]`}>{b.items?.length ?? 0} {(b.items?.length ?? 0) === 1 ? 'título' : 'títulos'}</td>
+                          <td className={`${tdCls} text-ink-3 text-[13px]`}>{b.receivable_payments?.length ?? 0} {(b.receivable_payments?.length ?? 0) === 1 ? 'título' : 'títulos'}</td>
                           <td className={tdCls} onClick={e => e.stopPropagation()}>
                             <button className={iconBtn} onClick={e => { e.stopPropagation(); openMenu(setFaturaMenu, b.id, e); }}><MoreHorizontal size={15} /></button>
                           </td>

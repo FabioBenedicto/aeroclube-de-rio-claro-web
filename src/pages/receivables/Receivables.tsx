@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Plane as PlaneIcon, Calendar, Wrench, Package, BarChart3, ArrowDownLeft, Clock, AlertCircle } from 'lucide-react';
+import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Plane as PlaneIcon, Calendar, Wrench, Package, BarChart3, ArrowDownLeft, Clock, AlertCircle } from 'lucide-react';
 import { getReceivables, createReceivable, updateReceivable, deleteReceivable, registerPayment } from '../../api/receivables';
 import Checkbox from '../../components/ui/Checkbox';
 import { getPeoples } from '../../api/peoples';
@@ -17,7 +17,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PERM } from '../../utils/permissions';
 import SettleModal from '../../components/SettleModal';
 import Badge from '../../components/ui/Badge';
-import { cn } from '../../utils/cn';
 import { toast, extractErrorMessage } from '../../utils/toast';
 
 type NamedOption = { id: number; name: string };

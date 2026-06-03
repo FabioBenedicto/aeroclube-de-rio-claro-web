@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MoreHorizontal, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Minus, Wrench, BookOpen, Settings, Package, BarChart3, ArrowUpRight, Hourglass, AlertCircle } from 'lucide-react';
+import { Plus, MoreHorizontal, Trash2, Check as CheckIcon, Eye, X, ChevronRight, ChevronLeft, User, UserCheck, Users, Briefcase, Building2, Wrench, BookOpen, Settings, Package, BarChart3, ArrowUpRight, Hourglass, AlertCircle } from 'lucide-react';
 import { getPayables, createPayable, deletePayable, registerPayablePayment } from '../../api/payables';
 import Checkbox from '../../components/ui/Checkbox';
 import PayModal from '../../components/PayModal';
