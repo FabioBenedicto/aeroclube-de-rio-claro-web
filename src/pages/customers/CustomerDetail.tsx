@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Plus, Check, X, Edit, Trash2, MoreHorizontal, Eye, ChevronRight } from 'lucide-react';
+import { ChevronLeft, Plus, Check, X, Edit, Trash2, MoreHorizontal, Eye, ChevronRight, Plane as PlaneIcon, Timer, TrendingUp, ArrowDownLeft, Clock, ArrowUpRight, Hourglass, BarChart3, Calendar } from 'lucide-react';
 import { getCustomer, getCustomerCredits, getCustomers, updateCustomer } from '../../api/customers';
 import { createReceivable, updateReceivable, deleteReceivable, registerPayment } from '../../api/receivables';
 import { getPayables, deletePayable, registerPayablePayment } from '../../api/payables';
@@ -674,6 +674,8 @@ export default function CustomerDetail() {
   const empPago = employeePayables.reduce((s, p) => s + Number(p.amount_paid), 0);
   const remuneracaoRecebida = instructorPayables.reduce((s, p) => s + Number(p.amount_paid), 0);
   const remuneracaoAReceber = instructorPayables.reduce((s, p) => s + Math.max(0, Number(p.amount) - Number(p.amount_paid)), 0);
+  const instrHours = instructorFlights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0);
+  const instrReceita = instructorFlights.reduce((s, f) => s + Number(f.total_amount ?? 0), 0);
 
   const instrVoosResult = pageItems(instructorFlights, tabPages['voos_instrutor'] ?? 1);
   const instrPayResult = pageItems(instructorPayables, tabPages['titulos_instrutor'] ?? 1);
@@ -695,14 +697,27 @@ export default function CustomerDetail() {
         <div>
           <button className="flex items-center gap-1 pb-2 mb-1 text-[13px] text-ink-3 cursor-pointer bg-transparent border-0 hover:text-ink" onClick={() => navigate('/pessoas')}><ChevronLeft size={15} /> Voltar</button>
           <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">{customer.name}</h1>
-          <div className="flex flex-wrap items-center gap-1 mt-1">
-            <span className="text-[13px] text-ink-3 font-mono text-[12px]">{customer.cpf} · {customer.email}</span>
+          <div className="flex flex-wrap items-center gap-1 mt-2">
             {customer.categories.map(cat => (
-              <Chip key={cat} variant={cat as ChipVariant} className="ml-1">
+              <Chip key={cat} variant={cat as ChipVariant}>
                 {cat === 'socio' ? 'sócio' : cat}
               </Chip>
             ))}
           </div>
+          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+            <span className="text-[12px] text-ink-3 font-mono">{customer.cpf} · {customer.email}</span>
+            {customer.phone_number && <span className="text-[12px] text-ink-3">· {customer.phone_number}</span>}
+          </div>
+          {customer.address && (
+            <div className="text-[12px] text-ink-3 mt-2">
+              {[
+                customer.address,
+                customer.neighborhood,
+                customer.city && customer.state ? `${customer.city} - ${customer.state}` : (customer.city || customer.state),
+                customer.zip_code,
+              ].filter(Boolean).join(' · ')}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 mt-6">
           <button className={btnCancel} onClick={() => setEditCustomerModal(true)}><Edit size={14} /> Editar</button>
@@ -928,16 +943,47 @@ export default function CustomerDetail() {
         {/* ── ALUNO ── */}
         {activeRoleTab === 'aluno' && (
           <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Voos</div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Quantidade de voos</div>
-                  <div className="text-[22px] font-bold tracking-tight">{flights.length}</div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Voos</div>
+                  <div className="text-[20px] font-bold tracking-tight">{flights.length}</div>
                 </div>
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Horas de voo</div>
-                  <div className="text-[22px] font-bold tracking-tight font-mono">{formatHours(flights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0))}</div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Timer size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Horas de voo</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono">{formatHours(flights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0))}</div>
+                </div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Recebido</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalRecebido)}</div>
+                </div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Clock size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">A receber</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAberto)}</div>
+                </div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-danger-soft text-danger"><ArrowUpRight size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Pago</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-danger"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalPago)}</div>
+                </div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Hourglass size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">A pagar</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAPagar)}</div>
                 </div>
               </div>
             </div>
@@ -981,22 +1027,54 @@ export default function CustomerDetail() {
         {/* ── SÓCIO ── */}
         {activeRoleTab === 'socio' && (
           <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Mensalidades</div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Mensalidades</div>
-                  <div className="text-[22px] font-bold tracking-tight">{mensalidadeRecs.length}</div>
+            <div className="grid grid-cols-4 gap-3">
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Voos</div>
+                  <div className="text-[20px] font-bold tracking-tight">{flights.length}</div>
                 </div>
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Valor recebido</div>
-                  <div className="text-[22px] font-bold tracking-tight font-mono"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(mensalidadesRecebidas)}</div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Timer size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Horas de voo</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono">{formatHours(flights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0))}</div>
                 </div>
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Valor a receber</div>
-                  <div className="text-[22px] font-bold tracking-tight font-mono" style={{ color: mensalidadesPendentes > 0 ? 'var(--danger)' : undefined }}>
-                    <span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(mensalidadesPendentes)}
-                  </div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><Calendar size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Mensalidades pagas</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(mensalidadesRecebidas)}</div>
+                </div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Recebido</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalRecebido)}</div>
+                </div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Clock size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">A receber</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAberto)}</div>
+                </div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-danger-soft text-danger"><ArrowUpRight size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Pago</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-danger"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalPago)}</div>
+                </div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Hourglass size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">A pagar</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAPagar)}</div>
                 </div>
               </div>
             </div>
@@ -1029,28 +1107,40 @@ export default function CustomerDetail() {
         {/* ── INSTRUTOR ── */}
         {activeRoleTab === 'instrutor' && (
           <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Instruções</div>
-              <div className="grid grid-cols-5 gap-3">
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Instruções</div>
-                  <div className="text-[22px] font-bold tracking-tight">{instructorFlights.length}</div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><PlaneIcon size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Voos instruídos</div>
+                  <div className="text-[20px] font-bold tracking-tight">{instructorFlights.length}</div>
                 </div>
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Horas de instruções</div>
-                  <div className="text-[22px] font-bold tracking-tight font-mono">{formatHours(instructorFlights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0))}</div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Timer size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Horas instruídas</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono">{formatHours(instrHours)}</div>
                 </div>
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Receita gerada</div>
-                  <div className="text-[22px] font-bold tracking-tight font-mono"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(instructorFlights.reduce((s, f) => s + Number(f.total_amount ?? 0), 0))}</div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><TrendingUp size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Receita</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(instrReceita)}</div>
                 </div>
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Remuneração recebida</div>
-                  <div className="text-[22px] font-bold tracking-tight font-mono"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(remuneracaoRecebida)}</div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Remuneração recebida</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(remuneracaoRecebida)}</div>
                 </div>
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Remuneração a receber</div>
-                  <div className="text-[22px] font-bold tracking-tight font-mono"><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(remuneracaoAReceber)}</div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Clock size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Remuneração a receber</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(remuneracaoAReceber)}</div>
                 </div>
               </div>
             </div>
@@ -1120,20 +1210,33 @@ export default function CustomerDetail() {
         {/* ── FUNCIONÁRIO ── */}
         {activeRoleTab === 'funcionario' && (
           <div className="flex flex-col gap-6">
-            <div className="flex flex-col gap-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Títulos</div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Títulos</div>
-                  <div className="text-[22px] font-bold tracking-tight">{employeePayables.length}</div>
+            <div className="grid grid-cols-4 gap-3">
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Recebido</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalRecebido)}</div>
                 </div>
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Valor a pagar</div>
-                  <div className="text-[22px] font-bold tracking-tight font-mono" style={{ color: empAPagar > 0 ? 'var(--warn)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(empAPagar)}</div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Clock size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">A receber</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(totalAberto)}</div>
                 </div>
-                <div className="bg-bg-elev border border-line rounded-lg p-4">
-                  <div className="text-[12px] text-ink-3 font-medium mb-1">Valor pago</div>
-                  <div className="text-[22px] font-bold tracking-tight font-mono" style={{ color: empPago > 0 ? 'var(--success)' : undefined }}><span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(empPago)}</div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-danger-soft text-danger"><ArrowUpRight size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">Pago</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-danger"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(empPago)}</div>
+                </div>
+              </div>
+              <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
+                <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Hourglass size={18} /></div>
+                <div className="flex flex-col gap-0.5">
+                  <div className="text-[12px] text-ink-3 font-medium">A pagar</div>
+                  <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(empAPagar)}</div>
                 </div>
               </div>
             </div>
