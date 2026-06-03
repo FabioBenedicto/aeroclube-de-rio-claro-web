@@ -126,16 +126,18 @@ export default function Users() {
                       </td>
                       <td className="px-4 py-2.5 text-ink-3">{new Date(u.created_at).toLocaleDateString('pt-BR')}</td>
                       <td className="px-4 py-2.5 text-right">
-                        <button
-                          className="inline-flex items-center justify-center w-6 h-6 rounded border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                            setMenuState(s => s?.id === u.id ? null : { id: u.id, top: rect.bottom + 4, right: window.innerWidth - rect.right });
-                          }}
-                        >
-                          ⋯
-                        </button>
+                        {u.role !== 'ADMIN' && (
+                          <button
+                            className="inline-flex items-center justify-center w-6 h-6 rounded border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                              setMenuState(s => s?.id === u.id ? null : { id: u.id, top: rect.bottom + 4, right: window.innerWidth - rect.right });
+                            }}
+                          >
+                            ⋯
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
