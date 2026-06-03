@@ -28,7 +28,8 @@ const MODULES = [
   { label: 'Relatórios',        view: 'reports:view',     create: '',                   update: '',                   delete: ''                   },
 ];
 
-const STEP_LABELS = ['Tipo', 'Dados', 'Permissões'] as const;
+const EMPLOYEE_STEPS = ['Tipo', 'Dados', 'Permissões'] as const;
+const ADMIN_STEPS    = ['Tipo', 'Dados'] as const;
 
 export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -59,13 +60,7 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
     onSuccess: () => { toast.success(mode === 'new' ? 'Usuário criado.' : 'Usuário atualizado.'); onSuccess(); },
   });
 
-  function nextStep() {
-    if (step === 2) {
-      if (!name.trim() || !email.trim()) { toast.error('Nome e e-mail são obrigatórios.'); return; }
-      if (mode === 'new' && !password) { toast.error('Senha é obrigatória.'); return; }
-    }
-    setStep(s => Math.min(s + 1, 3) as 1 | 2 | 3);
-  }
+  const isLastStep = step === 3 || (step === 2 && role === 'ADMIN');
 
   function handleSave() {
     const payload: Parameters<typeof createUser>[0] = {
@@ -76,6 +71,15 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
     };
     if (password) payload.password = password;
     mutation.mutate(payload);
+  }
+
+  function nextStep() {
+    if (step === 2) {
+      if (!name.trim() || !email.trim()) { toast.error('Nome e e-mail são obrigatórios.'); return; }
+      if (mode === 'new' && !password) { toast.error('Senha é obrigatória.'); return; }
+    }
+    if (isLastStep) { handleSave(); return; }
+    setStep(s => (s + 1) as 1 | 2 | 3);
   }
 
   return (
@@ -89,7 +93,7 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
           <div className="flex items-center gap-4">
             <h3 className="text-[15px] font-semibold m-0">{mode === 'new' ? 'Novo usuário' : 'Editar usuário'}</h3>
             <div className="flex items-center gap-1.5">
-              {STEP_LABELS.map((label, i) => {
+              {(role === 'ADMIN' ? ADMIN_STEPS : EMPLOYEE_STEPS).map((label, i) => {
                 const n = (i + 1) as 1 | 2 | 3;
                 return (
                   <span key={n} className="flex items-center gap-1.5">
@@ -156,18 +160,8 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
             </div>
           )}
 
-          {/* Step 3 — Permissões */}
-          {step === 3 && role === 'ADMIN' && (
-            <div className="flex flex-col items-center gap-3 py-10 text-center">
-              <ShieldCheck size={36} className="text-success" />
-              <div>
-                <div className="text-[14px] font-semibold text-ink">Acesso total</div>
-                <p className="text-[12px] text-ink-3 mt-1 m-0">Administradores têm acesso irrestrito a todos os módulos do sistema. Nenhuma permissão adicional é necessária.</p>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && role === 'EMPLOYEE' && (
+          {/* Step 3 — Permissões (EMPLOYEE only) */}
+          {step === 3 && (
             <div className="flex flex-col gap-2">
               <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-1">Permissões do funcionário</div>
               <div className="border border-line rounded-md overflow-hidden">
@@ -221,15 +215,11 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
             {step === 1 && (
               <button className={btnCancel} onClick={onClose}>Cancelar</button>
             )}
-            {step < 3 ? (
-              <button className={btnPrimary} onClick={nextStep}>
-                Próximo <ChevronRight size={14} />
-              </button>
-            ) : (
-              <button className={btnPrimary} onClick={handleSave} disabled={mutation.isPending}>
-                <Check size={14} /> {mutation.isPending ? 'Salvando…' : mode === 'new' ? 'Cadastrar' : 'Salvar'}
-              </button>
-            )}
+            <button className={btnPrimary} onClick={nextStep} disabled={mutation.isPending}>
+              {isLastStep
+                ? <><Check size={14} /> {mutation.isPending ? 'Salvando…' : mode === 'new' ? 'Cadastrar' : 'Salvar'}</>
+                : <>Próximo <ChevronRight size={14} /></>}
+            </button>
           </div>
         </div>
       </div>
