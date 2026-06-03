@@ -80,17 +80,13 @@ function NewReceivableModal({ customers, instructors, partners, employees, plane
         <div className={modalHead}>
           <div className="flex items-center gap-3">
             <h3 className="text-[15px] font-semibold m-0">Novo título a receber</h3>
-            <div className="flex items-center gap-1.5">
-              {(['Tipo', 'Pagador', 'Título', 'Aeronave', 'Recorrência'] as const).map((label, i) => {
-                const n = (i + 1) as 1 | 2 | 3 | 4 | 5;
-                return (
-                  <span key={n} className="flex items-center gap-1.5">
-                    <span className={`w-5 h-5 rounded-full text-[11px] font-semibold flex items-center justify-center transition-colors ${step === n ? 'bg-accent text-white' : step > n ? 'bg-success text-white' : 'bg-bg-sunk text-ink-3'}`}>{n}</span>
-                    <span className={`text-[11px] ${step === n ? 'text-ink font-medium' : 'text-ink-3'}`}>{label}</span>
-                    {i < 4 && <ChevronRight size={12} className="text-ink-4" />}
-                  </span>
-                );
-              })}
+            <div className="flex items-center gap-1">
+              {[1, 2, 3, 4, 5].map((n, i) => (
+                <span key={n} className="flex items-center gap-1">
+                  <span className={`w-5 h-5 rounded-full text-[11px] font-semibold flex items-center justify-center transition-colors ${step === n ? 'bg-accent text-white' : step > n ? 'bg-success text-white' : 'bg-bg-sunk text-ink-3'}`}>{n}</span>
+                  {i < 4 && <ChevronRight size={10} className="text-ink-4" />}
+                </span>
+              ))}
             </div>
           </div>
           <button className={iconBtn} onClick={onClose}><X size={16} /></button>
