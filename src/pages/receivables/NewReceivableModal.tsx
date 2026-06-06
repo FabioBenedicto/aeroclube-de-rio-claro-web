@@ -4,6 +4,10 @@ import DateInput from '../../components/DateInput';
 import { maskCurrency, parseCurrency } from '../../utils/masks';
 import type { Plane, Company } from '../../types';
 import { toast } from '../../utils/toast';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Select from '../../components/ui/Select';
+import Textarea from '../../components/ui/Textarea';
 
 type NamedOption = { id: number; name: string };
 
@@ -14,11 +18,6 @@ const modalBody = 'p-[18px] overflow-y-auto flex-1 flex flex-col gap-4';
 const modalFoot = 'flex items-center justify-end gap-2 px-[18px] py-3.5 border-t border-line';
 const field = 'flex flex-col gap-1.5';
 const lbl = 'text-[12px] font-medium text-ink-2';
-const inp = 'w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]';
-const sel = 'w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] cursor-pointer';
-const btnCancel = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink';
-const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90';
-const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 
 export const PRODUCT_TYPES_REC = [
   { value: 'voo',         label: 'Voo',         Icon: PlaneIcon },
@@ -79,7 +78,7 @@ export function NewReceivableModal({ customers, instructors, partners, employees
               ))}
             </div>
           </div>
-          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
 
         <div className={modalBody}>
@@ -122,20 +121,20 @@ export function NewReceivableModal({ customers, instructors, partners, employees
           {step === 3 && (
             <div className={field}>
               <label className={lbl}>Selecionar pagador</label>
-              <select className={sel} value={form.payer_id} onChange={e => setForm(f => ({ ...f, payer_id: e.target.value }))}>
+              <Select value={form.payer_id} onChange={e => setForm(f => ({ ...f, payer_id: e.target.value }))}>
                 <option value="">Selecione</option>
                 {payerList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+              </Select>
             </div>
           )}
 
           {step === 4 && (
             <>
               <div className={field}><label className={lbl}>Título</label>
-                <input className={inp} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+                <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
               </div>
               <div className={field}><label className={lbl}>Descrição</label>
-                <textarea className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] resize-y min-h-[60px]" rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+                <Textarea className="min-h-[60px]" rows={2} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className={field}><label className={lbl}>Vencimento</label>
@@ -154,10 +153,10 @@ export function NewReceivableModal({ customers, instructors, partners, employees
           {step === 5 && (
             <div className={field}>
               <label className={lbl}>Aeronave</label>
-              <select className={sel} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
+              <Select value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
                 <option value="">Sem aeronave</option>
                 {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
-              </select>
+              </Select>
             </div>
           )}
 
@@ -165,13 +164,13 @@ export function NewReceivableModal({ customers, instructors, partners, employees
             <div className="flex flex-col gap-3">
               <div className="grid grid-cols-2 gap-3">
                 <div className={field}><label className={lbl}>Repetir</label>
-                  <select className={sel} value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))}>
+                  <Select value={form.recurrence} onChange={e => setForm(f => ({ ...f, recurrence: e.target.value }))}>
                     <option value="">Sem recorrência</option>
                     <option value="monthly">Mensal</option><option value="weekly">Semanal</option><option value="yearly">Anual</option>
-                  </select>
+                  </Select>
                 </div>
                 <div className={field}><label className={lbl}>Nº de ocorrências</label>
-                  <input type="number" className={inp + ' font-mono'} min={2} max={60} value={form.occurrences} onChange={e => setForm(f => ({ ...f, occurrences: e.target.value }))} disabled={!form.recurrence} />
+                  <Input type="number" className="font-mono" min={2} max={60} value={form.occurrences} onChange={e => setForm(f => ({ ...f, occurrences: e.target.value }))} disabled={!form.recurrence} />
                 </div>
               </div>
               {form.recurrence && (
@@ -185,13 +184,13 @@ export function NewReceivableModal({ customers, instructors, partners, employees
 
         <div className={modalFoot} style={{ justifyContent: step === 1 ? 'space-between' : 'space-between' }}>
           <div>
-            {step > 1 && <button className={btnCancel} onClick={() => setStep(s => (s - 1) as 1 | 2 | 3 | 4 | 5 | 6)}><ChevronLeft size={14} /> Voltar</button>}
+            {step > 1 && <Button variant="default" onClick={() => setStep(s => (s - 1) as 1 | 2 | 3 | 4 | 5 | 6)}><ChevronLeft size={14} /> Voltar</Button>}
           </div>
           <div className="flex items-center gap-2">
-            {step === 1 && <button className={btnCancel} onClick={onClose}>Cancelar</button>}
+            {step === 1 && <Button variant="default" onClick={onClose}>Cancelar</Button>}
             {step < 6
-              ? <button className={btnPrimary} onClick={goNext}>Próximo <ChevronRight size={14} /></button>
-              : <button className={btnPrimary} onClick={() => onSave({
+              ? <Button variant="primary" onClick={goNext}>Próximo <ChevronRight size={14} /></Button>
+              : <Button variant="primary" onClick={() => onSave({
                 payer_type: form.payer_type,
                 ...(form.payer_type === 'customer' && form.payer_id && { client_id: Number(form.payer_id) }),
                 ...(form.payer_type === 'company' && form.payer_id && { company_id: Number(form.payer_id) }),
@@ -208,7 +207,7 @@ export function NewReceivableModal({ customers, instructors, partners, employees
                 occurrences: form.recurrence ? Number(form.occurrences) : undefined,
               })}>
                 <CheckIcon size={14} /> Criar título
-              </button>}
+              </Button>}
           </div>
         </div>
       </div>

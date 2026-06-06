@@ -21,6 +21,9 @@ import Checkbox from '../../components/ui/Checkbox';
 import type { Receivable, Flight, Payable } from '../../types';
 import PersonModal from './PersonModal';
 import { toast, extractErrorMessage } from '../../utils/toast';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Select from '../../components/ui/Select';
 
 type MenuState = { id: number; top: number; right: number };
 type BadgeVariant = 'success' | 'warn' | 'danger' | 'accent' | 'default';
@@ -29,11 +32,6 @@ type ChipVariant = 'aluno' | 'socio' | 'instrutor' | 'funcionario' | 'default';
 const P_STATUS_LABEL: Record<string, string> = { open: 'A pagar', partial: 'Parcial', closed: 'Pago' };
 const P_STATUS_BADGE: Record<string, string> = { open: 'warn', partial: 'accent', closed: 'success' };
 
-const inputCls = 'w-full px-3 py-1.5 text-[13px] bg-bg border border-line rounded-md text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] transition-[border-color,box-shadow] duration-100 placeholder:text-ink-3';
-const btnCancel = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink';
-const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90';
-const btnDanger = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-danger border border-danger text-white cursor-pointer hover:opacity-90';
-const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 const thCls = 'px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
 const thNumCls = 'px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
 const tdCls = 'px-3.5 py-2.5 border-b border-line';
@@ -85,7 +83,7 @@ function NewCreditModal({ personId, onClose, onSuccess }: { personId: number; on
               })}
             </div>
           </div>
-          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
 
         {step === 1 && (
@@ -104,11 +102,11 @@ function NewCreditModal({ personId, onClose, onSuccess }: { personId: number; on
           <div className="px-5 py-4 overflow-y-auto flex-1 flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Título</label>
-              <input autoFocus className={inputCls} placeholder="Ex.: Crédito de cortesia" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+              <Input autoFocus placeholder="Ex.: Crédito de cortesia" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Descrição do título <span className="text-ink-3 font-normal">(opcional)</span></label>
-              <input className={inputCls} placeholder="Detalhes adicionais…" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+              <Input placeholder="Detalhes adicionais…" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Data de vencimento <span className="text-ink-3 font-normal">(opcional)</span></label>
@@ -118,17 +116,17 @@ function NewCreditModal({ personId, onClose, onSuccess }: { personId: number; on
         )}
 
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
-          <button className={btnCancel} onClick={step === 1 ? onClose : () => setStep(1)}>
+          <Button variant="default" onClick={step === 1 ? onClose : () => setStep(1)}>
             {step === 1 ? 'Cancelar' : 'Voltar'}
-          </button>
+          </Button>
           {step === 1 ? (
-            <button className={btnPrimary} disabled={!step1Valid} onClick={() => setStep(2)}>
+            <Button variant="primary" disabled={!step1Valid} onClick={() => setStep(2)}>
               Próximo <ChevronRight size={14} />
-            </button>
+            </Button>
           ) : (
-            <button className={btnPrimary} disabled={!step2Valid || mut.isPending} onClick={() => mut.mutate()}>
+            <Button variant="primary" disabled={!step2Valid || mut.isPending} onClick={() => mut.mutate()}>
               <Check size={14} /> {mut.isPending ? 'Salvando…' : 'Confirmar'}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -145,23 +143,23 @@ function NewTituloModal({ personId, onClose, onSave, defaultProduct = 'voo' }: {
       <div className="bg-bg-elev border border-line rounded-[10px] w-full max-w-[480px] shadow-[var(--shadow)] flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
           <h3 className="text-[15px] font-semibold m-0">Novo título a receber</h3>
-          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
         <div className="px-5 py-4 overflow-y-auto flex-1 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-medium text-ink-2">Descrição do título</label>
-            <input className={inputCls} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+            <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Tipo</label>
-              <select className={inputCls} value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}>
+              <Select value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}>
                 <option value="voo">Voo</option>
                 <option value="mensalidade">Mensalidade</option>
                 <option value="servico">Serviço</option>
                 <option value="credito">Crédito</option>
                 <option value="outro">Outro</option>
-              </select>
+              </Select>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Vencimento</label>
@@ -171,14 +169,14 @@ function NewTituloModal({ personId, onClose, onSave, defaultProduct = 'voo' }: {
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Aeronave <span className="text-ink-3 font-normal">(opcional)</span></label>
-              <select className={inputCls} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
+              <Select value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
                 <option value="">—</option>
                 {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
-              </select>
+              </Select>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Voo Nº <span className="text-ink-3 font-normal">(opcional)</span></label>
-              <input type="number" className={inputCls} placeholder="ID do voo" value={form.flight_id} onChange={e => setForm(f => ({ ...f, flight_id: e.target.value }))} />
+              <Input type="number" placeholder="ID do voo" value={form.flight_id} onChange={e => setForm(f => ({ ...f, flight_id: e.target.value }))} />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
@@ -190,8 +188,8 @@ function NewTituloModal({ personId, onClose, onSave, defaultProduct = 'voo' }: {
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
-          <button className={btnCancel} onClick={onClose}>Cancelar</button>
-          <button className={btnPrimary} onClick={() => onSave({
+          <Button variant="default" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={() => onSave({
             client_id: personId,
             title: form.title,
             product: form.product,
@@ -202,7 +200,7 @@ function NewTituloModal({ personId, onClose, onSave, defaultProduct = 'voo' }: {
             ...(form.flight_id && { flight_id: parseInt(form.flight_id) }),
           })}>
             <Check size={14} /> Criar título
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -219,12 +217,12 @@ function EditTituloModal({ rec, onClose, onSave }: { rec: Receivable; onClose: (
             <h3 className="text-[15px] font-semibold m-0">Editar título</h3>
             <div className="text-[11.5px] text-ink-3 mt-0.5">{rec.id}</div>
           </div>
-          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
         <div className="px-5 py-4 overflow-y-auto flex-1 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-medium text-ink-2">Descrição</label>
-            <input className={inputCls} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+            <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
@@ -241,8 +239,8 @@ function EditTituloModal({ rec, onClose, onSave }: { rec: Receivable; onClose: (
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
-          <button className={btnCancel} onClick={onClose}>Cancelar</button>
-          <button className={btnPrimary} onClick={() => onSave({ title: form.title, expiration_date: form.expiration_date || undefined, total_amount: parseFloat(form.total_amount) })}><Check size={14} /> Salvar</button>
+          <Button variant="default" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={() => onSave({ title: form.title, expiration_date: form.expiration_date || undefined, total_amount: parseFloat(form.total_amount) })}><Check size={14} /> Salvar</Button>
         </div>
       </div>
     </div>
@@ -269,7 +267,7 @@ function SettleTituloModal({ rec, creditBalance = 0, onClose, onSave }: { rec: R
             <h3 className="text-[15px] font-semibold m-0">Registrar recebimento</h3>
             <div className="text-[11.5px] text-ink-3 mt-0.5">{rec.id}</div>
           </div>
-          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
         <div className="px-5 py-4 overflow-y-auto flex-1 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-4 px-3.5 py-3 bg-bg-sunk rounded-md">
@@ -316,9 +314,9 @@ function SettleTituloModal({ rec, creditBalance = 0, onClose, onSave }: { rec: R
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-ink-2">Forma de pagamento</label>
-                  <select className={inputCls} value={method} onChange={e => setMethod(e.target.value)}>
+                  <Select value={method} onChange={e => setMethod(e.target.value)}>
                     <option>PIX</option><option>Dinheiro</option><option>Transferência</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Cheque</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
             </>
@@ -326,8 +324,8 @@ function SettleTituloModal({ rec, creditBalance = 0, onClose, onSave }: { rec: R
         </div>
         <div className="flex items-center gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
           <span className="text-[11.5px] text-ink-3 mr-auto">Saldo restante: <strong className="font-mono">R$ {formatBRL(Math.max(0, remaining - totalEffective))}</strong></span>
-          <button className={btnCancel} onClick={onClose}>Cancelar</button>
-          <button className={btnPrimary} onClick={() => onSave({ amount_received: effectiveCash, payment_method: method, payment_date: new Date().toISOString(), use_credit: useCredit })}><Check size={14} /> Confirmar recebimento</button>
+          <Button variant="default" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={() => onSave({ amount_received: effectiveCash, payment_method: method, payment_date: new Date().toISOString(), use_credit: useCredit })}><Check size={14} /> Confirmar recebimento</Button>
         </div>
       </div>
     </div>
@@ -354,16 +352,16 @@ function NewFaturaModal({ receivables, personId, onClose, onSave }: { receivable
       <div className="bg-bg-elev border border-line rounded-[10px] w-full max-w-[520px] shadow-[var(--shadow)] flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
           <h3 className="text-[15px] font-semibold m-0">Nova fatura</h3>
-          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
         <div className="overflow-y-auto flex-1">
           <div className="px-[18px] py-3.5 border-b border-line">
             <div className="grid grid-cols-2 gap-4">
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-medium text-ink-2">Forma de pagamento</label>
-                <select className={inputCls} value={method} onChange={e => setMethod(e.target.value)}>
+                <Select value={method} onChange={e => setMethod(e.target.value)}>
                   <option>PIX</option><option>Dinheiro</option><option>Transferência</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Cheque</option>
-                </select>
+                </Select>
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-medium text-ink-2">Vencimento <span className="text-ink-3 font-normal">(opcional)</span></label>
@@ -411,11 +409,11 @@ function NewFaturaModal({ receivables, personId, onClose, onSave }: { receivable
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
-          <button className={btnCancel} onClick={onClose}>Cancelar</button>
-          <button className={btnPrimary} disabled={Object.keys(selected).length === 0 || total <= 0}
+          <Button variant="default" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" disabled={Object.keys(selected).length === 0 || total <= 0}
             onClick={() => onSave({ customer_id: personId, payment_method: method, ...(dueDate && { due_date: dueDate }), items: Object.entries(selected).map(([id, amount]) => ({ receivable_id: Number(id), amount })) })}>
             <Check size={14} /> Gerar fatura
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -716,7 +714,7 @@ export default function PersonDetail() {
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 mt-6">
-          <button className={btnCancel} onClick={() => setEditPersonModal(true)}><Edit size={14} /> Editar</button>
+          <Button variant="default" onClick={() => setEditPersonModal(true)}><Edit size={14} /> Editar</Button>
         </div>
       </div>
 
@@ -727,7 +725,7 @@ export default function PersonDetail() {
             <span className="text-[14px] font-medium mr-0.5">R$</span>{formatBRL(creditBalance)}
           </div>
         </div>
-        <button className={btnPrimary} onClick={() => setCreditModal(true)}><Plus size={14} /> Adicionar crédito</button>
+        <Button variant="primary" onClick={() => setCreditModal(true)}><Plus size={14} /> Adicionar crédito</Button>
       </div>
 
       <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-5">
@@ -736,7 +734,7 @@ export default function PersonDetail() {
           <DateInput value={pendingFrom} onChange={setPendingFrom} />
           <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">até</span>
           <DateInput value={pendingTo} onChange={setPendingTo} />
-          <button className={btnPrimary} onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); }}>Aplicar</button>
+          <Button variant="primary" onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); }}>Aplicar</Button>
         </div>
 
         <div className="flex border-b border-line">
@@ -792,13 +790,13 @@ export default function PersonDetail() {
             {alunoTab === 'receber' && (
               <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
                 <div className="flex items-center justify-end px-3 py-2.5 border-b border-line">
-                  <button className={btnPrimary} onClick={() => setNewTituloModal(true)}><Plus size={14} /> Novo título</button>
+                  <Button variant="primary" onClick={() => setNewTituloModal(true)}><Plus size={14} /> Novo título</Button>
                 </div>
                 {selectedRec.size > 0 && (
                   <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
                     <span className="text-[13px] font-medium text-accent-ink">{selectedRec.size} selecionado{selectedRec.size !== 1 ? 's' : ''}</span>
                     <span className="flex-1" />
-                    <button className={btnDanger} onClick={() => bulkDeleteRecMut.mutate([...selectedRec])}><Trash2 size={14} /> Remover selecionados</button>
+                    <Button variant="danger" className="bg-danger border-danger text-white hover:opacity-90" onClick={() => bulkDeleteRecMut.mutate([...selectedRec])}><Trash2 size={14} /> Remover selecionados</Button>
                   </div>
                 )}
                 <div className="overflow-x-auto">
@@ -825,7 +823,7 @@ export default function PersonDetail() {
                             <td className={`${tdCls} text-right font-mono`}>{Number(r.amount_received) > 0 ? `R$ ${formatBRL(r.amount_received)}` : '—'}</td>
                             <td className={tdCls}><Badge variant={(STATUS_BADGE[st] ?? 'default') as BadgeVariant}>{STATUS_LABEL[st]}</Badge></td>
                             <td className={tdCls} onClick={e => e.stopPropagation()}>
-                              <button className={iconBtn} onClick={e => { e.stopPropagation(); openMenu(setTituloMenu, r.id, e); }}><MoreHorizontal size={15} /></button>
+                              <Button variant="icon" onClick={e => { e.stopPropagation(); openMenu(setTituloMenu, r.id, e); }}><MoreHorizontal size={15} /></Button>
                             </td>
                           </tr>
                         );
@@ -842,7 +840,7 @@ export default function PersonDetail() {
                   <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
                     <span className="text-[13px] font-medium text-accent-ink">{selectedPagar.size} selecionado{selectedPagar.size !== 1 ? 's' : ''}</span>
                     <span className="flex-1" />
-                    <button className={btnDanger} onClick={() => bulkDeletePayableMut.mutate([...selectedPagar])}><Trash2 size={14} /> Remover selecionados</button>
+                    <Button variant="danger" className="bg-danger border-danger text-white hover:opacity-90" onClick={() => bulkDeletePayableMut.mutate([...selectedPagar])}><Trash2 size={14} /> Remover selecionados</Button>
                   </div>
                 )}
                 <div className="overflow-x-auto">
@@ -862,7 +860,7 @@ export default function PersonDetail() {
                           <td className={`${tdCls} text-right font-mono`}>{Number(p.amount_paid) > 0 ? `R$ ${formatBRL(p.amount_paid)}` : '—'}</td>
                           <td className={tdCls}><Badge variant={(P_STATUS_BADGE[p.status] ?? 'default') as BadgeVariant}>{P_STATUS_LABEL[p.status] ?? p.status}</Badge></td>
                           <td className={tdCls} onClick={e => e.stopPropagation()}>
-                            <button className={iconBtn} onClick={e => { e.stopPropagation(); openMenu(setPayableMenu, p.id, e); }}><MoreHorizontal size={15} /></button>
+                            <Button variant="icon" onClick={e => { e.stopPropagation(); openMenu(setPayableMenu, p.id, e); }}><MoreHorizontal size={15} /></Button>
                           </td>
                         </tr>
                       ))}
@@ -875,13 +873,13 @@ export default function PersonDetail() {
             {alunoTab === 'faturas' && (
               <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
                 <div className="flex items-center justify-end px-3 py-2.5 border-b border-line">
-                  <button className={btnPrimary} onClick={() => setNewFaturaModal(true)}><Plus size={14} /> Nova fatura</button>
+                  <Button variant="primary" onClick={() => setNewFaturaModal(true)}><Plus size={14} /> Nova fatura</Button>
                 </div>
                 {selectedFatura.size > 0 && (
                   <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
                     <span className="text-[13px] font-medium text-accent-ink">{selectedFatura.size} selecionado{selectedFatura.size !== 1 ? 's' : ''}</span>
                     <span className="flex-1" />
-                    <button className={btnDanger} onClick={() => bulkDeleteFaturaMut.mutate([...selectedFatura])}><Trash2 size={14} /> Remover selecionados</button>
+                    <Button variant="danger" className="bg-danger border-danger text-white hover:opacity-90" onClick={() => bulkDeleteFaturaMut.mutate([...selectedFatura])}><Trash2 size={14} /> Remover selecionados</Button>
                   </div>
                 )}
                 <div className="overflow-x-auto">
@@ -898,7 +896,7 @@ export default function PersonDetail() {
                           <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(b.total_amount)}</td>
                           <td className={`${tdCls} text-ink-3 text-[13px]`}>{b.receivable_payments?.length ?? 0} {(b.receivable_payments?.length ?? 0) === 1 ? 'título' : 'títulos'}</td>
                           <td className={tdCls} onClick={e => e.stopPropagation()}>
-                            <button className={iconBtn} onClick={e => { e.stopPropagation(); openMenu(setFaturaMenu, b.id, e); }}><MoreHorizontal size={15} /></button>
+                            <Button variant="icon" onClick={e => { e.stopPropagation(); openMenu(setFaturaMenu, b.id, e); }}><MoreHorizontal size={15} /></Button>
                           </td>
                         </tr>
                       ))}
@@ -911,7 +909,7 @@ export default function PersonDetail() {
             {alunoTab === 'creditos' && (
               <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
                 <div className="flex items-center justify-end px-3 py-2.5 border-b border-line">
-                  <button className={btnPrimary} onClick={() => setCreditModal(true)}><Plus size={14} /> Adicionar crédito</button>
+                  <Button variant="primary" onClick={() => setCreditModal(true)}><Plus size={14} /> Adicionar crédito</Button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full border-collapse text-[13px]">
@@ -1006,13 +1004,13 @@ export default function PersonDetail() {
             {alunoSubTab === 'voos' && (
               <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
                 <div className="flex items-center justify-end px-3 py-2.5 border-b border-line">
-                  <button className={btnPrimary} onClick={() => setNewVooModal(true)}><Plus size={14} /> Novo voo</button>
+                  <Button variant="primary" onClick={() => setNewVooModal(true)}><Plus size={14} /> Novo voo</Button>
                 </div>
                 {selectedVoo.size > 0 && (
                   <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
                     <span className="text-[13px] font-medium text-accent-ink">{selectedVoo.size} selecionado{selectedVoo.size !== 1 ? 's' : ''}</span>
                     <span className="flex-1" />
-                    <button className={btnDanger} onClick={() => bulkDeleteVooMut.mutate([...selectedVoo])}><Trash2 size={14} /> Remover selecionados</button>
+                    <Button variant="danger" className="bg-danger border-danger text-white hover:opacity-90" onClick={() => bulkDeleteVooMut.mutate([...selectedVoo])}><Trash2 size={14} /> Remover selecionados</Button>
                   </div>
                 )}
                 <div className="overflow-x-auto">
@@ -1029,7 +1027,7 @@ export default function PersonDetail() {
                           <td className={`${tdCls} text-right font-mono`}>{formatHours(f.total_hours)}</td>
                           <td className={`${tdCls} text-right font-mono`}>{f.total_amount != null ? `R$ ${formatBRL(f.total_amount)}` : '—'}</td>
                           <td className={tdCls} onClick={e => e.stopPropagation()}>
-                            <button className={iconBtn} onClick={e => { e.stopPropagation(); openMenu(setVooMenu, f.id, e); }}><MoreHorizontal size={15} /></button>
+                            <Button variant="icon" onClick={e => { e.stopPropagation(); openMenu(setVooMenu, f.id, e); }}><MoreHorizontal size={15} /></Button>
                           </td>
                         </tr>
                       ))}

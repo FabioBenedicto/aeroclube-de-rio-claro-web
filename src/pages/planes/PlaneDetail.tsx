@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Plus, Edit, Plane, Clock, ArrowDownLeft, ArrowUpRight } from 'lucide-react';
+import { ChevronLeft, Plus, Edit, Plane, Clock, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
 import { getPlane, updatePlane } from '../../api/planes';
 import { getSettings } from '../../api/settings';
 import { getPeoples } from '../../api/peoples';
@@ -15,6 +15,9 @@ import FlightModal from '../flights/FlightModal';
 import PlaneModal from './PlaneModal';
 import Badge from '../../components/ui/Badge';
 import { toast, extractErrorMessage } from '../../utils/toast';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Select from '../../components/ui/Select';
 
 type BadgeVariant = 'success' | 'warn' | 'danger' | 'accent' | 'default';
 type TabKey = 'voos' | 'receber_assoc' | 'pagar_assoc';
@@ -22,8 +25,6 @@ type TabKey = 'voos' | 'receber_assoc' | 'pagar_assoc';
 const P_STATUS_LABEL: Record<string, string> = { open: 'A pagar', partial: 'Parcial', closed: 'Pago' };
 const P_STATUS_BADGE: Record<string, string> = { open: 'warn', partial: 'accent', closed: 'success' };
 
-const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90';
-const btnSecondary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink';
 const thCls = 'px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
 const thNumCls = 'px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
 const tdCls = 'px-3.5 py-2.5 border-b border-line';
@@ -126,7 +127,7 @@ export default function PlaneDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 mt-6">
-          <button className={btnSecondary} onClick={() => setEditPlaneModal(true)}><Edit size={14} /> Editar</button>
+          <Button variant="default" onClick={() => setEditPlaneModal(true)}><Edit size={14} /> Editar</Button>
         </div>
       </div>
 
@@ -141,7 +142,7 @@ export default function PlaneDetail() {
             <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Até</span>
             <DateInput value={pendingTo} onChange={setPendingTo} />
           </div>
-          <button className={btnPrimary} onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); }}>Aplicar</button>
+          <Button variant="primary" onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); }}>Aplicar</Button>
         </div>
 
         <div className="grid grid-cols-4 gap-3">
@@ -189,13 +190,13 @@ export default function PlaneDetail() {
           </div>
           <div className="flex-1" />
           {tab === 'voos' && (
-            <button className={btnPrimary} onClick={() => setFlightModal(true)}><Plus size={14} /> Novo voo</button>
+            <Button variant="primary" onClick={() => setFlightModal(true)}><Plus size={14} /> Novo voo</Button>
           )}
           {tab === 'receber_assoc' && (
-            <button className={btnPrimary} onClick={() => setNewRecModal(true)}><Plus size={14} /> Novo título a receber</button>
+            <Button variant="primary" onClick={() => setNewRecModal(true)}><Plus size={14} /> Novo título a receber</Button>
           )}
           {tab === 'pagar_assoc' && (
-            <button className={btnPrimary} onClick={() => setNewPayModal(true)}><Plus size={14} /> Novo título a pagar</button>
+            <Button variant="primary" onClick={() => setNewPayModal(true)}><Plus size={14} /> Novo título a pagar</Button>
           )}
         </div>
 
@@ -363,9 +364,6 @@ const modalBody = 'p-[18px] flex flex-col gap-4';
 const modalFoot = 'flex items-center justify-end gap-2 px-[18px] py-3.5 border-t border-line';
 const field = 'flex flex-col gap-1.5';
 const lbl = 'text-[12px] font-medium text-ink-2';
-const inp = 'w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]';
-const btnC = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink';
-const btnP = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90';
 function NewReceivableForPlaneModal({ planeId, onClose, onSave }: { planeId: number; onClose: () => void; onSave: (d: unknown) => void }) {
   const [form, setForm] = useState({ title: '', total_amount: '', expiration_date: '', product: 'servico' });
   const { data: customersData } = useQuery({ queryKey: ['peoples', '', 'all', 1], queryFn: () => getPeoples(undefined, undefined, 1, 9999) });
@@ -377,10 +375,10 @@ function NewReceivableForPlaneModal({ planeId, onClose, onSave }: { planeId: num
       <div className={modalPanel} onClick={e => e.stopPropagation()}>
         <div className={modalHead}>
           <h3 className="text-[15px] font-semibold m-0">Novo título a receber</h3>
-          <button className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={onClose}>✕</button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
         <div className={modalBody}>
-          <div className={field}><label className={lbl}>Título</label><input className={inp} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
+          <div className={field}><label className={lbl}>Título</label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
           <div className="grid grid-cols-2 gap-3">
             <div className={field}><label className={lbl}>Vencimento</label><DateInput value={form.expiration_date} onChange={v => setForm(f => ({ ...f, expiration_date: v }))} /></div>
             <div className={field}><label className={lbl}>Valor</label>
@@ -391,23 +389,23 @@ function NewReceivableForPlaneModal({ planeId, onClose, onSave }: { planeId: num
             </div>
           </div>
           <div className={field}><label className={lbl}>Cliente</label>
-            <select className={inp + ' cursor-pointer'} value={clientId} onChange={e => setClientId(e.target.value)}>
+            <Select value={clientId} onChange={e => setClientId(e.target.value)}>
               <option value="">Nenhum</option>
               {(customersData?.data ?? []).map((c: { id: number; name: string }) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </Select>
           </div>
           <div className={field}><label className={lbl}>Empresa</label>
-            <select className={inp + ' cursor-pointer'} value={companyId} onChange={e => setCompanyId(e.target.value)}>
+            <Select value={companyId} onChange={e => setCompanyId(e.target.value)}>
               <option value="">Nenhuma</option>
               {(companiesData?.data ?? []).map((c: { id: number; name: string }) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </Select>
           </div>
         </div>
         <div className={modalFoot}>
-          <button className={btnC} onClick={onClose}>Cancelar</button>
-          <button className={btnP} onClick={() => onSave({ title: form.title, total_amount: parseFloat(form.total_amount), expiration_date: form.expiration_date || undefined, product: form.product, plane_id: planeId, client_id: clientId ? Number(clientId) : undefined, company_id: companyId ? Number(companyId) : undefined })}>
+          <Button variant="default" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={() => onSave({ title: form.title, total_amount: parseFloat(form.total_amount), expiration_date: form.expiration_date || undefined, product: form.product, plane_id: planeId, client_id: clientId ? Number(clientId) : undefined, company_id: companyId ? Number(companyId) : undefined })}>
             Criar título
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -425,10 +423,10 @@ function NewPayableForPlaneModal({ planeId, onClose, onSave }: { planeId: number
       <div className={modalPanel} onClick={e => e.stopPropagation()}>
         <div className={modalHead}>
           <h3 className="text-[15px] font-semibold m-0">Novo título a pagar</h3>
-          <button className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={onClose}>✕</button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
         <div className={modalBody}>
-          <div className={field}><label className={lbl}>Título</label><input className={inp} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
+          <div className={field}><label className={lbl}>Título</label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
           <div className="grid grid-cols-2 gap-3">
             <div className={field}><label className={lbl}>Vencimento</label><DateInput value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} /></div>
             <div className={field}><label className={lbl}>Valor</label>
@@ -439,23 +437,23 @@ function NewPayableForPlaneModal({ planeId, onClose, onSave }: { planeId: number
             </div>
           </div>
           <div className={field}><label className={lbl}>Cliente</label>
-            <select className={inp + ' cursor-pointer'} value={clientId} onChange={e => setClientId(e.target.value)}>
+            <Select value={clientId} onChange={e => setClientId(e.target.value)}>
               <option value="">Nenhum</option>
               {(customersData?.data ?? []).map((c: { id: number; name: string }) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </Select>
           </div>
           <div className={field}><label className={lbl}>Empresa</label>
-            <select className={inp + ' cursor-pointer'} value={companyId} onChange={e => setCompanyId(e.target.value)}>
+            <Select value={companyId} onChange={e => setCompanyId(e.target.value)}>
               <option value="">Nenhuma</option>
               {(companiesData?.data ?? []).map((c: { id: number; name: string }) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
+            </Select>
           </div>
         </div>
         <div className={modalFoot}>
-          <button className={btnC} onClick={onClose}>Cancelar</button>
-          <button className={btnP} onClick={() => onSave({ title: form.title, amount: parseFloat(form.amount), due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined, product: form.product, plane_id: planeId, client_id: clientId ? Number(clientId) : undefined, company_id: companyId ? Number(companyId) : undefined })}>
+          <Button variant="default" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={() => onSave({ title: form.title, amount: parseFloat(form.amount), due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined, product: form.product, plane_id: planeId, client_id: clientId ? Number(clientId) : undefined, company_id: companyId ? Number(companyId) : undefined })}>
             Criar título
-          </button>
+          </Button>
         </div>
       </div>
     </div>

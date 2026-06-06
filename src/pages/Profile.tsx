@@ -6,6 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { toast } from '../utils/toast';
 import type { UserRecord } from '../api/users';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
 
 type Tab = 'info' | 'senha' | 'aparencia' | 'conta';
 
@@ -16,10 +18,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'conta',     label: 'Conta'        },
 ];
 
-const inp     = 'w-full px-3 py-2 rounded-md border border-line bg-bg text-[13px] text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] transition-[border-color,box-shadow] duration-100';
 const inpLock = 'w-full px-3 py-2 rounded-md border border-line bg-bg-sunk text-[13px] text-ink-3 outline-none cursor-not-allowed select-none';
 const errCls  = 'text-[11.5px] text-danger mt-0.5';
-const saveBtn = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90 disabled:opacity-50';
 
 export default function Profile() {
   const { user, updateLoggedUser, logout } = useAuth();
@@ -103,7 +103,7 @@ export default function Profile() {
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Nome</label>
-              <input className={inp} value={name} onChange={e => setName(e.target.value)} />
+              <Input value={name} onChange={e => setName(e.target.value)} />
             </div>
             <div className="flex flex-col gap-1.5">
               <div className="flex items-center justify-between">
@@ -120,9 +120,9 @@ export default function Profile() {
             </div>
           </div>
           <div className="flex justify-end">
-            <button className={saveBtn} onClick={saveInfo} disabled={infoMut.isPending}>
+            <Button variant="primary" onClick={saveInfo} disabled={infoMut.isPending}>
               <Check size={14} /> {infoMut.isPending ? 'Salvando…' : 'Salvar'}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -133,8 +133,7 @@ export default function Profile() {
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Senha atual</label>
-              <input
-                className={inp}
+              <Input
                 type="password"
                 value={pass.current}
                 onChange={e => { setPass(p => ({ ...p, current: e.target.value })); setPassErrors({}); }}
@@ -143,8 +142,7 @@ export default function Profile() {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Nova senha</label>
-              <input
-                className={inp}
+              <Input
                 type="password"
                 placeholder="Mínimo 6 caracteres"
                 value={pass.next}
@@ -154,8 +152,7 @@ export default function Profile() {
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Confirmar nova senha</label>
-              <input
-                className={inp}
+              <Input
                 type="password"
                 value={pass.confirm}
                 onChange={e => setPass(p => ({ ...p, confirm: e.target.value }))}
@@ -164,9 +161,9 @@ export default function Profile() {
             </div>
           </div>
           <div className="flex justify-end">
-            <button className={saveBtn} onClick={savePass} disabled={passMut.isPending}>
+            <Button variant="primary" onClick={savePass} disabled={passMut.isPending}>
               <Check size={14} /> {passMut.isPending ? 'Salvando…' : 'Alterar senha'}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -180,30 +177,32 @@ export default function Profile() {
           </div>
           {!confirmDelete ? (
             <div>
-              <button
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-danger text-danger cursor-pointer hover:bg-danger-soft bg-transparent"
+              <Button
+                variant="danger"
+                className="border-danger text-danger hover:bg-danger-soft"
                 onClick={() => setConfirmDelete(true)}
               >
                 <Trash2 size={14} /> Excluir minha conta
-              </button>
+              </Button>
             </div>
           ) : (
             <div className="flex flex-col gap-3">
               <p className="text-[13px] text-danger font-medium m-0">Tem certeza? Esta ação não pode ser desfeita.</p>
               <div className="flex items-center gap-2">
-                <button
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-danger border border-danger text-white cursor-pointer hover:opacity-90 disabled:opacity-60"
+                <Button
+                  variant="danger"
+                  className="bg-danger border-danger text-white hover:opacity-90 disabled:opacity-60"
                   disabled={deleteMut.isPending}
                   onClick={() => deleteMut.mutate()}
                 >
                   <Trash2 size={14} /> {deleteMut.isPending ? 'Excluindo…' : 'Confirmar exclusão'}
-                </button>
-                <button
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover"
+                </Button>
+                <Button
+                  variant="default"
                   onClick={() => setConfirmDelete(false)}
                 >
                   Cancelar
-                </button>
+                </Button>
               </div>
             </div>
           )}

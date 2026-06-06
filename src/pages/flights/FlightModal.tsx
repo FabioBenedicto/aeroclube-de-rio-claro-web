@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { X, Check, ChevronRight, ChevronLeft } from 'lucide-react';
 import type { Flight, Person, Plane } from '../../types';
 import DateTimeInput from '../../components/DateTimeInput';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Select from '../../components/ui/Select';
 
 const FLIGHT_TYPES = ['Instrução', 'Sócio Solo', 'Sócio Duplo Comando'];
 
@@ -33,8 +36,6 @@ interface Props {
   onClose: () => void;
   onSave: (data: unknown) => void;
 }
-
-const inputCls = 'w-full px-3 py-1.5 text-[13px] bg-bg border border-line rounded-md text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] transition-[border-color,box-shadow] duration-100 placeholder:text-ink-3';
 
 const TYPE_DESCRIPTIONS: Record<string, string> = {
   'Instrução': 'Voo com instrutor obrigatório. Gera título a receber do cliente e título a pagar ao instrutor.',
@@ -162,7 +163,7 @@ export default function FlightModal({ mode, flight, customers, planes, initialCu
               </div>
             )}
           </div>
-          <button className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
 
         {/* Body */}
@@ -190,8 +191,7 @@ export default function FlightModal({ mode, flight, customers, planes, initialCu
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-ink-2">Aeronave *</label>
-                  <select
-                    className={inputCls}
+                  <Select
                     value={form.plane_id}
                     onChange={e => {
                       const planeId = e.target.value;
@@ -201,40 +201,40 @@ export default function FlightModal({ mode, flight, customers, planes, initialCu
                   >
                     <option value="">Selecione</option>
                     {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''} {p.aircraft_type === 'glider' ? '(Planador)' : ''}</option>)}
-                  </select>
+                  </Select>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-ink-2">Tipo de aeronave</label>
-                  <select className={inputCls} value={form.aircraft_type} onChange={e => setForm(f => ({ ...f, aircraft_type: e.target.value }))}>
+                  <Select value={form.aircraft_type} onChange={e => setForm(f => ({ ...f, aircraft_type: e.target.value }))}>
                     <option value="airplane">Avião</option>
                     <option value="glider">Planador</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-ink-2">Cliente *</label>
-                  <select className={inputCls} value={form.customer_id} onChange={e => setForm(f => ({ ...f, customer_id: e.target.value }))}>
+                  <Select value={form.customer_id} onChange={e => setForm(f => ({ ...f, customer_id: e.target.value }))}>
                     <option value="">Selecione</option>
                     {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  </Select>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-ink-2">Instrutor{withInstructor ? ' *' : ' (opcional)'}</label>
-                  <select className={inputCls} value={form.instructor_id} onChange={e => setForm(f => ({ ...f, instructor_id: e.target.value }))}>
+                  <Select value={form.instructor_id} onChange={e => setForm(f => ({ ...f, instructor_id: e.target.value }))}>
                     <option value="">{withInstructor ? 'Selecione' : 'Nenhum'}</option>
                     {instructors.map(i => <option key={i.instructorId} value={i.instructorId}>{i.name}</option>)}
-                  </select>
+                  </Select>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-ink-2">Origem (ICAO) *</label>
-                  <input className={`${inputCls} font-mono`} value={form.origin} onChange={e => setForm(f => ({ ...f, origin: e.target.value.toUpperCase() }))} />
+                  <Input className="font-mono" value={form.origin} onChange={e => setForm(f => ({ ...f, origin: e.target.value.toUpperCase() }))} />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-ink-2">Destino (ICAO) *</label>
-                  <input className={`${inputCls} font-mono`} value={form.destination} onChange={e => setForm(f => ({ ...f, destination: e.target.value.toUpperCase() }))} />
+                  <Input className="font-mono" value={form.destination} onChange={e => setForm(f => ({ ...f, destination: e.target.value.toUpperCase() }))} />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -258,11 +258,11 @@ export default function FlightModal({ mode, flight, customers, planes, initialCu
               </p>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-medium text-ink-2">Título do recebível *</label>
-                <input className={inputCls} value={recTitle} onChange={e => setRecTitle(e.target.value)} />
+                <Input value={recTitle} onChange={e => setRecTitle(e.target.value)} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-medium text-ink-2">Vencimento</label>
-                <input type="date" className={inputCls} value={recExpiration} onChange={e => setRecExpiration(e.target.value)} />
+                <Input type="date" value={recExpiration} onChange={e => setRecExpiration(e.target.value)} />
               </div>
             </>
           )}
@@ -275,11 +275,11 @@ export default function FlightModal({ mode, flight, customers, planes, initialCu
               </p>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-medium text-ink-2">Título do pagável *</label>
-                <input className={inputCls} value={payTitle} onChange={e => setPayTitle(e.target.value)} />
+                <Input value={payTitle} onChange={e => setPayTitle(e.target.value)} />
               </div>
               <div className="flex flex-col gap-1.5">
                 <label className="text-[12px] font-medium text-ink-2">Vencimento</label>
-                <input type="date" className={inputCls} value={payDueDate} onChange={e => setPayDueDate(e.target.value)} />
+                <Input type="date" value={payDueDate} onChange={e => setPayDueDate(e.target.value)} />
               </div>
             </>
           )}
@@ -291,31 +291,31 @@ export default function FlightModal({ mode, flight, customers, planes, initialCu
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
           {!isNew ? (
             <>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={onClose}>Cancelar</button>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90" onClick={handleSave}><Check size={14} /> Salvar</button>
+              <Button variant="default" onClick={onClose}>Cancelar</Button>
+              <Button variant="primary" onClick={handleSave}><Check size={14} /> Salvar</Button>
             </>
           ) : step === 1 ? (
             <>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={onClose}>Cancelar</button>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90" onClick={handleNextStep1}>Próximo <ChevronRight size={14} /></button>
+              <Button variant="default" onClick={onClose}>Cancelar</Button>
+              <Button variant="primary" onClick={handleNextStep1}>Próximo <ChevronRight size={14} /></Button>
             </>
           ) : step === 2 ? (
             <>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={() => { setError(''); setStep(1); }}><ChevronLeft size={14} /> Voltar</button>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90" onClick={handleNextStep2}>Próximo <ChevronRight size={14} /></button>
+              <Button variant="default" onClick={() => { setError(''); setStep(1); }}><ChevronLeft size={14} /> Voltar</Button>
+              <Button variant="primary" onClick={handleNextStep2}>Próximo <ChevronRight size={14} /></Button>
             </>
           ) : step === 3 ? (
             <>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={() => { setError(''); setStep(2); }}><ChevronLeft size={14} /> Voltar</button>
+              <Button variant="default" onClick={() => { setError(''); setStep(2); }}><ChevronLeft size={14} /> Voltar</Button>
               {withInstructor
-                ? <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90" onClick={handleNextStep3}>Próximo <ChevronRight size={14} /></button>
-                : <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90" onClick={handleNextStep3}><Check size={14} /> Registrar</button>
+                ? <Button variant="primary" onClick={handleNextStep3}>Próximo <ChevronRight size={14} /></Button>
+                : <Button variant="primary" onClick={handleNextStep3}><Check size={14} /> Registrar</Button>
               }
             </>
           ) : (
             <>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={() => { setError(''); setStep(3); }}><ChevronLeft size={14} /> Voltar</button>
-              <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90" onClick={handleSave}><Check size={14} /> Registrar</button>
+              <Button variant="default" onClick={() => { setError(''); setStep(3); }}><ChevronLeft size={14} /> Voltar</Button>
+              <Button variant="primary" onClick={handleSave}><Check size={14} /> Registrar</Button>
             </>
           )}
         </div>
