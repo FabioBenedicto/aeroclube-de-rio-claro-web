@@ -747,7 +747,7 @@ export default function PeopleDetail() {
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const payMut = useMutation({
-    mutationFn: (d: unknown) => registerPayablePayment(payPayable!.id, d as { amount: number; method?: string; paid_at?: string }),
+    mutationFn: (d: unknown) => registerPayablePayment(payPayable!.id, d as { amount: number; method?: string; payment_date?: string }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payables', 'people', peopleId] }); invalidatePayableStats(); setPayPayable(null); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
@@ -899,8 +899,8 @@ export default function PeopleDetail() {
   const mensalidadeRecs = payerReceivables.filter((r: any) => r.product === 'mensalidade');
 
   const recTab = receivablesTabData?.data ?? [];
-  const pagarTab = customerPayables.filter(p => p.stakeholder === 'PEOPLE' || p.stakeholder == null);
   const faturasTab = bills;
+  const pagarTab = [...new Map([...customerPayables, ...instructorPayables, ...employeePayables].map(p => [p.id, p])).values()];
   const voosTab = flightsStudentData?.data ?? [];
   const voosSocioTab = flightsPartnerData?.data ?? [];
 
@@ -1156,6 +1156,8 @@ export default function PeopleDetail() {
                 <Pagination page={tabPages.faturas} totalPages={billsResponse?.totalPages ?? 1} total={billsResponse?.total ?? 0} limit={PAGE_SIZE} onChange={p => { setTabPage('faturas', p); setSelectedFatura(new Set()); }} />
               </div>
             )}
+
+
           </div>
         )}
 

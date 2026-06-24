@@ -155,10 +155,10 @@ function GerarRemessaModal({ onClose, onSuccess }: {
           <span className="text-[12px] text-ink-3">até</span>
           <DateInput value={dueTo} onChange={setDueTo} className="w-[120px]" />
           <Button
-            variant="default"
+            variant="primary"
             onClick={() => { setAppliedFrom(dueFrom); setAppliedTo(dueTo); setPage(1); setSelected(new Set()); }}
           >
-            Filtrar
+            Aplicar
           </Button>
         </>
       }

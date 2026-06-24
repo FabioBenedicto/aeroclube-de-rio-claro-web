@@ -194,6 +194,7 @@ export interface Payable {
   person_id?: number;
   company_id?: number;
   instructor_id?: number;
+  flight_id?: number;
   plane_id?: number;
   partner_id?: number;
   employee_id?: number;
@@ -213,6 +214,7 @@ export interface Payable {
   aircraft?: Plane;
   partner?: Partner;
   employee?: Employee;
+  flight?: { id: number; type: string; origin: string; destination: string; start_date: string };
   payments?: PayablePayment[];
 }
 

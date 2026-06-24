@@ -154,11 +154,18 @@ export default function PayableDetail() {
         </div>
       )}
 
-      {(payable.people || payable.company || payable.instructor || payable.aircraft || payable.partner || payable.employee) && (() => {
+      {(payable.people || payable.company || payable.instructor || payable.aircraft || payable.partner || payable.employee || payable.flight) && (() => {
         const pt = payable.stakeholder;
         const btnCls = 'flex flex-col px-3.5 py-2.5 text-left cursor-pointer bg-bg-elev border border-line rounded-lg hover:bg-bg-hover';
         const labelCls = 'text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-0.5';
         const valueCls = 'text-[13.5px] font-medium text-ink';
+
+        const instructorPeople = payable.instructor?.people || payable.instructor?.customer;
+        const instructorPeopleId = payable.instructor?.people_id || payable.instructor?.customer_id;
+        const partnerPeople = payable.partner?.people || payable.partner?.customer;
+        const partnerPeopleId = payable.partner?.people_id || payable.partner?.customer_id;
+        const employeePeople = payable.employee?.people || payable.employee?.customer;
+        const employeePeopleId = payable.employee?.people_id || payable.employee?.customer_id;
 
         const payerNode = pt === 'PEOPLE' && payable.people ? (
           <button className={btnCls} onClick={() => navigate(`/peoples/${payable.people!.id}`)}>
@@ -168,17 +175,17 @@ export default function PayableDetail() {
           <button className={btnCls} onClick={() => navigate(`/companies/${payable.company!.id}`)}>
             <div className={labelCls}>Empresa</div><div className={valueCls}>{payable.company.name}</div>
           </button>
-        ) : pt === 'INSTRUCTOR' && payable.instructor?.customer ? (
-          <button className={btnCls} onClick={() => navigate(`/peoples/${payable.instructor!.customer_id}`)}>
-            <div className={labelCls}>Instrutor</div><div className={valueCls}>{payable.instructor.customer.name}</div>
+        ) : pt === 'INSTRUCTOR' && instructorPeople ? (
+          <button className={btnCls} onClick={() => navigate(`/peoples/${instructorPeopleId}`)}>
+            <div className={labelCls}>Instrutor</div><div className={valueCls}>{instructorPeople.name}</div>
           </button>
-        ) : pt === 'PARTNER' && payable.partner?.customer ? (
-          <button className={btnCls} onClick={() => navigate(`/peoples/${payable.partner!.customer_id}`)}>
-            <div className={labelCls}>Sócio</div><div className={valueCls}>{payable.partner.customer.name}</div>
+        ) : pt === 'PARTNER' && partnerPeople ? (
+          <button className={btnCls} onClick={() => navigate(`/peoples/${partnerPeopleId}`)}>
+            <div className={labelCls}>Sócio</div><div className={valueCls}>{partnerPeople.name}</div>
           </button>
-        ) : pt === 'EMPLOYEE' && payable.employee?.customer ? (
-          <button className={btnCls} onClick={() => navigate(`/peoples/${payable.employee!.customer_id}`)}>
-            <div className={labelCls}>Funcionário</div><div className={valueCls}>{payable.employee.customer.name}</div>
+        ) : pt === 'EMPLOYEE' && employeePeople ? (
+          <button className={btnCls} onClick={() => navigate(`/peoples/${employeePeopleId}`)}>
+            <div className={labelCls}>Funcionário</div><div className={valueCls}>{employeePeople.name}</div>
           </button>
         ) : null;
 
@@ -193,25 +200,31 @@ export default function PayableDetail() {
               <div className={labelCls}>Empresa</div><div className={valueCls}>{payable.company.name}</div>
             </button>
           ),
-          pt !== 'INSTRUCTOR' && payable.instructor?.customer && (
-            <button key="instructor" className={btnCls} onClick={() => navigate(`/peoples/${payable.instructor!.customer_id}`)}>
-              <div className={labelCls}>Instrutor</div><div className={valueCls}>{payable.instructor.customer.name}</div>
+          pt !== 'INSTRUCTOR' && instructorPeople && (
+            <button key="instructor" className={btnCls} onClick={() => navigate(`/peoples/${instructorPeopleId}`)}>
+              <div className={labelCls}>Instrutor</div><div className={valueCls}>{instructorPeople.name}</div>
             </button>
           ),
-          pt !== 'PARTNER' && payable.partner?.customer && (
-            <button key="partner" className={btnCls} onClick={() => navigate(`/peoples/${payable.partner!.customer_id}`)}>
-              <div className={labelCls}>Sócio</div><div className={valueCls}>{payable.partner.customer.name}</div>
+          pt !== 'PARTNER' && partnerPeople && (
+            <button key="partner" className={btnCls} onClick={() => navigate(`/peoples/${partnerPeopleId}`)}>
+              <div className={labelCls}>Sócio</div><div className={valueCls}>{partnerPeople.name}</div>
             </button>
           ),
-          pt !== 'EMPLOYEE' && payable.employee?.customer && (
-            <button key="employee" className={btnCls} onClick={() => navigate(`/peoples/${payable.employee!.customer_id}`)}>
-              <div className={labelCls}>Funcionário</div><div className={valueCls}>{payable.employee.customer.name}</div>
+          pt !== 'EMPLOYEE' && employeePeople && (
+            <button key="employee" className={btnCls} onClick={() => navigate(`/peoples/${employeePeopleId}`)}>
+              <div className={labelCls}>Funcionário</div><div className={valueCls}>{employeePeople.name}</div>
             </button>
           ),
           payable.aircraft && (
             <button key="plane" className={btnCls} onClick={() => navigate(`/planes/${payable.aircraft!.id}`)}>
               <div className={labelCls}>Aeronave</div>
               <div className={`${valueCls} font-mono`}>{payable.aircraft.registration}{payable.aircraft.model ? ` · ${payable.aircraft.model}` : ''}</div>
+            </button>
+          ),
+          payable.flight && (
+            <button key="flight" className={btnCls} onClick={() => navigate(`/flights/${payable.flight!.id}`)}>
+              <div className={labelCls}>Voo</div>
+              <div className={`${valueCls} font-mono`}>{payable.flight.id} · {payable.flight.origin} → {payable.flight.destination}</div>
             </button>
           ),
         ].filter(Boolean);

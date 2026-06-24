@@ -336,6 +336,10 @@ function formatCell(value: any, key: string, schema: FieldDef[], rawMode = false
   if (f?.type === 'number' || (typeof value === 'number' && (key.includes('amount') || key.includes('balance') || key.includes('valor')))) {
     return typeof value === 'number' ? `R$ ${formatBRL(value)}` : String(value);
   }
+  if (f?.type === 'enum' && f.enumValues) {
+    const match = f.enumValues.find(ev => ev.value === String(value));
+    if (match) return match.label;
+  }
   return String(value);
 }
 
@@ -356,6 +360,8 @@ export default function Reports() {
 
   const [results, setResults] = useState<Record<string, any>[] | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
 
   const schema = ENTITY_SCHEMAS[entity] ?? [];
 
@@ -402,7 +408,7 @@ export default function Reports() {
     setAggregations(a => [...a, { id: uid(), field: numField?.key ?? 'id', fn: 'sum', alias: '' }]);
   }
 
-  function buildPayload(): QueryReportPayload {
+  function buildPayload(targetPage = page): QueryReportPayload {
     return {
       entity,
       joins: joins.length > 0 ? joins : undefined,
@@ -418,19 +424,20 @@ export default function Reports() {
       aggregations: useGroupBy && aggregations.length
         ? aggregations.filter(a => a.fn && a.alias).map(a => ({ field: a.fn === 'count' ? 'id' : a.field, fn: a.fn, alias: a.alias }))
         : undefined,
-      limit: 500,
+      limit: pageSize,
+      page: targetPage,
     };
   }
 
   const runMut = useMutation({
     mutationFn: (p: QueryReportPayload) => runQuery(p),
-    onSuccess: data => setResults(data),
+    onSuccess: data => { setResults(data); setPage(1); },
     onError: (e: any) => toast.error(extractErrorMessage(e)),
   });
 
   const rawMut = useMutation({
     mutationFn: (s: string) => runRawQuery({ sql: s }),
-    onSuccess: data => setResults(data),
+    onSuccess: data => { setResults(data); setPage(1); },
     onError: (e: any) => toast.error(extractErrorMessage(e)),
   });
 
@@ -445,7 +452,13 @@ export default function Reports() {
   function handleRun() {
     setResults(null);
     if (mode === 'sql') rawMut.mutate(sql);
-    else runMut.mutate(buildPayload());
+    else runMut.mutate(buildPayload(1));
+  }
+
+  function handleGoToPage(p: number) {
+    setPage(p);
+    setResults(null);
+    runMut.mutate(buildPayload(p));
   }
 
   async function handleExport() {
@@ -476,6 +489,8 @@ export default function Reports() {
     if (f) return f.label;
     return aggregations.find(a => a.alias === key)?.alias ?? key;
   };
+
+  const hasNextPage = results !== null && results.length >= pageSize;
 
   return (
     <div className="flex flex-col gap-4">
@@ -716,35 +731,82 @@ export default function Reports() {
                 <span className="text-[13px] font-medium text-ink">
                   {results.length} resultado{results.length !== 1 ? 's' : ''}
                 </span>
-                <Button variant="secondary" disabled={exporting || results.length === 0} onClick={handleExport}>
-                  <Download size={13} /> {exporting ? 'Exportando…' : 'Exportar Excel'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[12px] text-ink-3">Por página:</span>
+                    <select
+                      className="px-2 py-1 border border-line rounded-md bg-bg text-[12px] text-ink outline-none focus:border-accent cursor-pointer"
+                      value={pageSize}
+                      onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                    >
+                      {[25, 50, 100, 250].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                  <Button variant="secondary" disabled={exporting || results.length === 0} onClick={handleExport}>
+                    <Download size={13} /> {exporting ? 'Exportando…' : 'Exportar Excel'}
+                  </Button>
+                </div>
               </div>
               {results.length === 0 ? (
                 <div className="py-12 text-center text-[13px] text-ink-3">Nenhum resultado encontrado.</div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse text-[13px]">
-                    <thead>
-                      <tr>
-                        {resultKeys.map(key => (
-                          <th key={key} className={thCls}>{getLabel(key)}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {results.map((row, i) => (
-                        <tr key={i} className="hover:bg-bg-hover">
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse text-[13px]">
+                      <thead>
+                        <tr>
                           {resultKeys.map(key => (
-                            <td key={key} className="px-3.5 py-2.5 border-b border-line">
-                              {formatCell(row[key], key, schema, mode === 'sql')}
-                            </td>
+                            <th key={key} className={thCls}>{getLabel(key)}</th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {results.map((row, i) => (
+                          <tr key={i} className="hover:bg-bg-hover">
+                            {resultKeys.map(key => (
+                              <td key={key} className="px-3.5 py-2.5 border-b border-line">
+                                {formatCell(row[key], key, mergedSchema, mode === 'sql')}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {(page > 1 || hasNextPage) && mode !== 'sql' && (
+                    <div className="flex items-center justify-between px-3.5 py-2.5 border-t border-line">
+                      <span className="text-[12px] text-ink-3">
+                        Página {page} · {results.length} registro{results.length !== 1 ? 's' : ''}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          className="px-2.5 py-1 rounded border border-line bg-bg text-[12px] text-ink disabled:opacity-40 disabled:cursor-not-allowed hover:bg-bg-hover cursor-pointer"
+                          disabled={page === 1}
+                          onClick={() => handleGoToPage(1)}
+                        >
+                          «
+                        </button>
+                        <button
+                          className="px-2.5 py-1 rounded border border-line bg-bg text-[12px] text-ink disabled:opacity-40 disabled:cursor-not-allowed hover:bg-bg-hover cursor-pointer"
+                          disabled={page === 1}
+                          onClick={() => handleGoToPage(page - 1)}
+                        >
+                          ‹
+                        </button>
+                        <span className="px-2.5 py-1 rounded border border-accent bg-accent text-white text-[12px]">
+                          {page}
+                        </span>
+                        <button
+                          className="px-2.5 py-1 rounded border border-line bg-bg text-[12px] text-ink disabled:opacity-40 disabled:cursor-not-allowed hover:bg-bg-hover cursor-pointer"
+                          disabled={!hasNextPage}
+                          onClick={() => handleGoToPage(page + 1)}
+                        >
+                          ›
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           ) : (

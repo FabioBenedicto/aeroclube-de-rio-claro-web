@@ -205,7 +205,7 @@ function SettleReceivableModal({ rec, onClose, onSave }: { rec: Receivable; onCl
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
           <Button variant="default" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" onClick={() => onSave({ amount: effective, method, paid_at: new Date().toISOString() })}><Check size={14} /> Confirmar recebimento</Button>
+          <Button variant="primary" onClick={() => onSave({ amount: effective, method, payment_date: new Date().toISOString() })}><Check size={14} /> Confirmar recebimento</Button>
         </div>
       </div>
     </div>

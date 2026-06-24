@@ -17,15 +17,20 @@ interface Props {
   onSuccess: () => void;
 }
 
-const EMPLOYEE_STEPS = ['Tipo', 'Dados', 'Permissões'] as const;
-const ADMIN_STEPS    = ['Tipo', 'Dados'] as const;
+const EMPLOYEE_STEPS = ['Tipo', 'Dados', 'Endereço', 'Permissões'] as const;
+const ADMIN_STEPS    = ['Tipo', 'Dados', 'Endereço'] as const;
 
 export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [role, setRole] = useState<'ADMIN' | 'USER'>(user?.role ?? 'USER');
   const [name, setName] = useState(user?.name ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [password, setPassword] = useState('');
+  const [street, setStreet] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [city, setCity] = useState('');
+  const [addressState, setAddressState] = useState('');
+  const [zipCode, setZipCode] = useState('');
   const [perms, setPerms] = useState<Set<string>>(new Set(user?.permissions ?? []));
 
   const { data: permGroups = [] } = useQuery({
@@ -45,7 +50,20 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
     onSuccess: () => { toast.success(mode === 'new' ? 'Usuário criado.' : 'Usuário atualizado.'); onSuccess(); },
   });
 
-  const isLastStep = step === 3 || (step === 2 && role === 'ADMIN');
+  const totalSteps = role === 'ADMIN' ? 3 : 4;
+  const isLastStep = step === totalSteps;
+
+  function buildAddress() {
+    const hasAny = street || neighborhood || city || addressState || zipCode;
+    if (!hasAny) return undefined;
+    return {
+      street: street || undefined,
+      neighborhood: neighborhood || undefined,
+      city: city || undefined,
+      state: addressState || undefined,
+      zip_code: zipCode || undefined,
+    };
+  }
 
   function handleSave() {
     const payload: Parameters<typeof createUser>[0] = {
@@ -53,6 +71,7 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
       email: email.trim(),
       role,
       permissions: role === 'ADMIN' ? [] : Array.from(perms),
+      address: buildAddress(),
     };
     if (password) payload.password = password;
     mutation.mutate(payload);
@@ -64,7 +83,7 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
       if (mode === 'new' && !password) { toast.error('Senha é obrigatória.'); return; }
     }
     if (isLastStep) { handleSave(); return; }
-    setStep(s => (s + 1) as 1 | 2 | 3);
+    setStep(s => (s + 1) as 1 | 2 | 3 | 4);
   }
 
   return (
@@ -74,14 +93,14 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
           <span className="text-[15px] font-semibold text-ink">{mode === 'new' ? 'Novo usuário' : 'Editar usuário'}</span>
           <div className="flex items-center gap-1.5">
             {(role === 'ADMIN' ? ADMIN_STEPS : EMPLOYEE_STEPS).map((label, i) => {
-              const n = (i + 1) as 1 | 2 | 3;
+              const n = (i + 1) as 1 | 2 | 3 | 4;
               return (
                 <span key={n} className="flex items-center gap-1.5">
                   <span className={`w-5 h-5 rounded-full text-[11px] font-semibold flex items-center justify-center transition-colors ${
                     step === n ? 'bg-accent text-white' : step > n ? 'bg-success text-white' : 'bg-bg-sunk text-ink-3'
                   }`}>{n}</span>
                   <span className={`text-[11px] ${step === n ? 'text-ink font-medium' : 'text-ink-3'}`}>{label}</span>
-                  {i < 2 && <ChevronRight size={12} className="text-ink-4" />}
+                  {i < totalSteps - 1 && <ChevronRight size={12} className="text-ink-4" />}
                 </span>
               );
             })}
@@ -141,6 +160,33 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
         )}
 
         {step === 3 && (
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-medium text-ink-2">CEP</label>
+              <Input value={zipCode} onChange={e => setZipCode(e.target.value)} placeholder="00000000" maxLength={8} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-medium text-ink-2">Rua</label>
+              <Input value={street} onChange={e => setStreet(e.target.value)} placeholder="Rua, número" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-medium text-ink-2">Bairro</label>
+              <Input value={neighborhood} onChange={e => setNeighborhood(e.target.value)} placeholder="Bairro" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-medium text-ink-2">Cidade</label>
+                <Input value={city} onChange={e => setCity(e.target.value)} placeholder="Cidade" />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[12px] font-medium text-ink-2">Estado</label>
+                <Input value={addressState} onChange={e => setAddressState(e.target.value.toUpperCase())} placeholder="SP" maxLength={2} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {step === 4 && (
           <div className="flex flex-col gap-2">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-1">Permissões do funcionário</div>
             <div className="border border-line rounded-md overflow-hidden">
@@ -194,7 +240,7 @@ export default function UserModal({ mode, user, onClose, onSuccess }: Props) {
       <Modal.Footer justify="between">
         <div>
           {step > 1 && (
-            <Button variant="default" onClick={() => setStep(s => (s - 1) as 1 | 2 | 3)}>
+            <Button variant="default" onClick={() => setStep(s => (s - 1) as 1 | 2 | 3 | 4)}>
               <ChevronLeft size={14} /> Voltar
             </Button>
           )}

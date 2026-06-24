@@ -209,7 +209,6 @@ export default function Settings() {
   const { data: sicoob, isLoading: loadingSicoob } = useQuery({ queryKey: ['sicoob-config'], queryFn: getSicoobConfig });
 
   const [instructorPct, setInstructorPct] = useState(0);
-  const [monthlyFee, setMonthlyFee] = useState(0);
   const [gliderMinutes, setGliderMinutes] = useState(0);
   const [gliderInitialValue, setGliderInitialValue] = useState(0);
   const [gliderMinuteValue, setGliderMinuteValue] = useState(0);
@@ -229,7 +228,6 @@ export default function Settings() {
   useEffect(() => {
     if (settings) {
       setInstructorPct(Number(settings.instructor_percentage));
-      setMonthlyFee(Number(settings.partner_monthly_dues));
       setGliderMinutes(Number(settings.glider_initial_minutes));
       setGliderInitialValue(Number(settings.glider_initial_value));
       setGliderMinuteValue(Number(settings.glider_minute_value));
@@ -273,7 +271,6 @@ export default function Settings() {
   function handleSaveSettings() {
     settingsMut.mutate({
       instructor_percentage: instructorPct,
-      partner_monthly_dues: monthlyFee,
       glider_initial_minutes: gliderMinutes,
       glider_initial_value: gliderInitialValue,
       glider_minute_value: gliderMinuteValue,
@@ -417,20 +414,6 @@ export default function Settings() {
             </div>
           </div>
 
-          <div className="bg-bg-elev border border-line rounded-lg p-6">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-4">Sócios</div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[12px] font-medium text-ink-2">Mensalidade de sócios (R$)</label>
-              <div className="flex rounded-md border border-line overflow-hidden focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus)] max-w-[200px]">
-                <span className="flex items-center px-2.5 text-[13px] text-ink-3 bg-bg-sunk border-r border-line">R$</span>
-                <input
-                  className={moneyInp}
-                  type="number" step="0.01" value={monthlyFee}
-                  onChange={e => setMonthlyFee(Number(e.target.value))}
-                />
-              </div>
-            </div>
-          </div>
 
           <div className="bg-bg-elev border border-line rounded-lg p-6">
             <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3 mb-4">Instrutores</div>

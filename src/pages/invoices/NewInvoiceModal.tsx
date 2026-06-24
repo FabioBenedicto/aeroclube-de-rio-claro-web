@@ -3,10 +3,12 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronRight, ChevronLeft, Check as CheckIcon } from 'lucide-react';
 import { getPeoples } from '../../api/peoples';
 import { getReceivables } from '../../api/receivables';
-import { formatBRL, receivableStatus } from '../../utils/format';
+import { formatBRL, formatDate, receivableStatus, STATUS_BADGE, STATUS_LABEL } from '../../utils/format';
 import type { People, Receivable } from '../../types';
 import DateInput from '../../components/DateInput';
 import Checkbox from '../../components/ui/Checkbox';
+import Badge from '../../components/ui/Badge';
+import Chip from '../../components/ui/Chip';
 import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
 import Skeleton from '../../components/ui/Skeleton';
@@ -50,13 +52,17 @@ export function NewInvoiceModal({ onClose, onSave }: {
   const [selectedCustomer, setSelectedCustomer] = useState<People | null>(null);
   const [selected, setSelected] = useState<Record<number, number>>({});
   const [dueDate, setDueDate] = useState('');
+  const [pendingFrom, setPendingFrom] = useState('');
+  const [pendingTo, setPendingTo] = useState('');
+  const [appliedFrom, setAppliedFrom] = useState('');
+  const [appliedTo, setAppliedTo] = useState('');
 
   const { data: customersData } = useQuery({ queryKey: ['peoples', '', 'all', 1], queryFn: () => getPeoples(undefined, undefined, 1, 9999) });
   const customers = customersData?.data ?? [];
 
   const { data: receivablesData, isLoading: recsLoading } = useQuery({
-    queryKey: ['receivables', 'all', '', 1],
-    queryFn: () => getReceivables(undefined, undefined, undefined, undefined, 1, 9999),
+    queryKey: ['receivables', 'invoice-modal', appliedFrom, appliedTo],
+    queryFn: () => getReceivables(undefined, undefined, appliedFrom || undefined, appliedTo || undefined, 1, 9999),
     enabled: !!selectedCustomer,
   });
   const receivables = receivablesData?.data ?? [];
@@ -111,8 +117,21 @@ export function NewInvoiceModal({ onClose, onSave }: {
     <SelectionModal
       title="Nova fatura"
       onClose={onClose}
-      maxWidth={520}
+      maxWidth={860}
       headerAccessory={<StepIndicator step={2} steps={['Cliente', 'Títulos']} />}
+      filters={
+        <>
+          <DateInput value={pendingFrom} onChange={setPendingFrom} className="w-[120px]" />
+          <span className="text-[12px] text-ink-3">até</span>
+          <DateInput value={pendingTo} onChange={setPendingTo} className="w-[120px]" />
+          <Button
+            variant="primary"
+            onClick={() => { setAppliedFrom(pendingFrom); setAppliedTo(pendingTo); setSelected({}); }}
+          >
+            Aplicar
+          </Button>
+        </>
+      }
       footer={
         <>
           <span className="text-[13px] text-ink-3">
@@ -143,29 +162,42 @@ export function NewInvoiceModal({ onClose, onSave }: {
         <thead>
           <tr>
             <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line w-9"></th>
+            <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">ID</th>
             <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Título</th>
+            <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Tipo</th>
+            <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Vencimento</th>
             <th className="px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Valor</th>
             <th className="px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Recebido</th>
+            <th className="px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">Status</th>
             <th className="px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line">A incluir</th>
           </tr>
         </thead>
         <tbody>
-          {recsLoading && <Skeleton.TableRows cols={5} rows={4} />}
+          {recsLoading && <Skeleton.TableRows cols={9} rows={4} />}
           {!recsLoading && openRecs.length === 0 && (
-            <tr><td colSpan={5} className="px-3.5 py-6 text-center text-ink-3">Nenhum título em aberto.</td></tr>
+            <tr><td colSpan={9} className="px-3.5 py-6 text-center text-ink-3">Nenhum título em aberto.</td></tr>
           )}
           {openRecs.map((r: Receivable) => {
             const remaining = Number(r.total_amount) - Number(r.amount_received);
             const checked = r.id in selected;
+            const st = receivableStatus(r);
             return (
               <tr key={r.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => toggleRec(r)}>
                 <td className="px-3.5 py-2.5 border-b border-line w-9">
                   <Checkbox checked={checked} onChange={() => toggleRec(r)} onClick={e => e.stopPropagation()} />
                 </td>
+                <td className="px-3.5 py-2.5 border-b border-line font-mono text-[11.5px] text-ink-3">{r.id}</td>
                 <td className="px-3.5 py-2.5 border-b border-line">{r.title}</td>
+                <td className="px-3.5 py-2.5 border-b border-line">
+                  {r.receivable_type?.name ?? r.product ? <Chip>{r.receivable_type?.name ?? r.product}</Chip> : '—'}
+                </td>
+                <td className="px-3.5 py-2.5 border-b border-line font-mono text-[12px]">{formatDate(r.expiration_date)}</td>
                 <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">R$ {formatBRL(r.total_amount)}</td>
                 <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">
                   {Number(r.amount_received) > 0 ? `R$ ${formatBRL(r.amount_received)}` : '—'}
+                </td>
+                <td className="px-3.5 py-2.5 border-b border-line">
+                  <Badge variant={(STATUS_BADGE[st] ?? 'default') as any}>{STATUS_LABEL[st]}</Badge>
                 </td>
                 <td className="px-3.5 py-2.5 border-b border-line text-right font-mono">
                   {checked ? (

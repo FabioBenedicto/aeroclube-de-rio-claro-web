@@ -10,7 +10,7 @@ export const createPayable = (data: unknown) => client.post<Payable>('/payables'
 export const updatePayable = (id: number, data: unknown) => client.patch<Payable>(`/payables/${id}`, data).then(r => r.data);
 export const deletePayable = (id: number) => client.delete(`/payables/${id}`);
 export const bulkDeletePayables = (ids: number[]) => client.delete('/payables/bulk', { data: { ids } });
-export const registerPayablePayment = (id: number, data: { amount: number; method?: string; paid_at?: string; notes?: string }) =>
+export const registerPayablePayment = (id: number, data: { amount: number; method?: string; payment_date?: string; notes?: string }) =>
   client.patch(`/payables/${id}/payments`, data).then(r => r.data);
 export const deletePayablePayment = (payableId: number, paymentId: number) =>
   client.delete(`/payables/${payableId}/payments/${paymentId}`);

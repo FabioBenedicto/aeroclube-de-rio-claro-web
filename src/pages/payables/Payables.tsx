@@ -102,7 +102,7 @@ export default function Payables() {
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const payMut = useMutation({
-    mutationFn: (d: unknown) => registerPayablePayment(payPayable!.id, d as { amount: number; method?: string; paid_at?: string }),
+    mutationFn: (d: unknown) => registerPayablePayment(payPayable!.id, d as { amount: number; method?: string; payment_date?: string }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['payables'] }); setPayPayable(null); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });

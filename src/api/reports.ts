@@ -20,6 +20,8 @@ export interface QueryReportPayload {
   groupBy?: string[];
   aggregations?: AggregationRow[];
   limit?: number;
+  page?: number;
+  offset?: number;
 }
 
 export function runQuery(payload: QueryReportPayload): Promise<Record<string, any>[]> {

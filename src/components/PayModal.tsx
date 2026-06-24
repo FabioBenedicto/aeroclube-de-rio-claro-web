@@ -96,7 +96,7 @@ export default function PayModal({ payable, onClose, onSave }: { payable: Payabl
           </button>
           <button
             className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90"
-            onClick={() => onSave({ amount: effective, method, paid_at: new Date().toISOString() })}
+            onClick={() => onSave({ amount: effective, method, payment_date: new Date().toISOString() })}
           >
             <CheckIcon size={14} /> Confirmar pagamento
           </button>
