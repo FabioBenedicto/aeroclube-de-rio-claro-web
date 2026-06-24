@@ -11,3 +11,4 @@ export { default as StatCard } from './StatCard';
 export { default as SearchInput } from './SearchInput';
 export { default as TabBar } from './TabBar';
 export { default as ProgressBar } from './ProgressBar';
+export { default as SelectionModal } from './SelectionModal';
