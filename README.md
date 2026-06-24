@@ -1,4 +1,4 @@
-*# Aeroclube de Rio Claro — Web
+# Aeroclube de Rio Claro — Web
 
 Interface web do *sistema de gestão financeira e operacional do Aeroclube de Rio Claro*. Painel administrativo (SPA) para gerenciar pessoas, empresas, aeronaves e voos, além de todo o ciclo financeiro do clube — títulos a receber e a pagar, faturas, baixas, remessas bancárias (CNAB/Sicoob), relatórios sob demanda e um dashboard com indicadores.
 
