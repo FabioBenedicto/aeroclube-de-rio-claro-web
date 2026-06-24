@@ -1,49 +1,56 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon, Eye, BarChart3, ArrowDownLeft, Clock, AlertCircle } from 'lucide-react';
-import { getReceivables, createReceivable, updateReceivable, deleteReceivable, registerPayment } from '../../api/receivables';
+import { Plus, MoreHorizontal, Edit, Trash2, Eye, BarChart3, ArrowDownLeft, Clock, AlertCircle } from 'lucide-react';
+import { getReceivables, createReceivable, updateReceivable, deleteReceivable, bulkDeleteReceivables } from '../../api/receivables';
 import Checkbox from '../../components/ui/Checkbox';
 import { getPeoples } from '../../api/peoples';
 import { getPlanes } from '../../api/planes';
 import { getCompanies } from '../../api/companies';
-import DateInput from '../../components/DateInput';
 import { formatBRL, formatDate, receivableStatus, STATUS_LABEL, STATUS_BADGE } from '../../utils/format';
-import type { Receivable, Plane, Person, Company } from '../../types';
-import RowMenu, { RowMenuSep } from '../../components/RowMenu';
+import type { Receivable, Plane, People, Company } from '../../types';
+import RowMenu, { RowMenuSep, RowMenuItem, RowMenuDangerItem } from '../../components/RowMenu';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../contexts/AuthContext';
-import { PERM } from '../../utils/permissions';
-import SettleModal from '../../components/SettleModal';
+import { PERMISSIONS } from '../../utils/permissions';
 import Badge from '../../components/ui/Badge';
+import Chip from '../../components/ui/Chip';
 import { toast, extractErrorMessage } from '../../utils/toast';
 import { NewReceivableModal } from './NewReceivableModal';
 import { EditReceivableModal } from './EditReceivableModal';
 import Table, { type TableColumn } from '../../components/ui/Table';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
+import DateRangeFilter from '../../components/DateRangeFilter';
+import StatCard from '../../components/ui/StatCard';
+import SearchInput from '../../components/ui/SearchInput';
+import TabBar, { type Tab } from '../../components/ui/TabBar';
+import ProgressBar from '../../components/ui/ProgressBar';
 
 type NamedOption = { id: number; name: string };
 
-const TABS = [['all','Todos'],['0','A receber'],['partial','Parcial'],['1','Pagos'],['overdue','Vencidos']] as const;
+const TABS: Tab[] = [
+  { key: undefined, label: 'Todos' },
+  { key: 'PENDING', label: 'A receber' },
+  { key: 'PARTIAL', label: 'Parcial' },
+  { key: 'PAID', label: 'Pagos' },
+  { key: 'overdue', label: 'Vencidos' },
+];
 type MenuState = { id: number; top: number; right: number };
 
 export default function Receivables() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { can } = useAuth();
-  const [tab, setTab] = useState<string>('all');
+  const [tab, setTab] = useState<string | undefined>(undefined);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [pendingFrom, setPendingFrom] = useState('');
-  const [pendingTo, setPendingTo] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
   const [menuState, setMenuState] = useState<MenuState | null>(null);
   const [newModal, setNewModal] = useState(false);
   const [editRec, setEditRec] = useState<Receivable | null>(null);
-  const [settleRec, setSettleRec] = useState<Receivable | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
   useEffect(() => { const t = setTimeout(() => setDebouncedSearch(search), 300); return () => clearTimeout(t); }, [search]);
@@ -57,40 +64,39 @@ export default function Receivables() {
 
   const { data: instructorData } = useQuery({ queryKey: ['peoples', '', 'instructor', 1], queryFn: () => getPeoples(undefined, 'instructor', 1, 9999) });
   const instructors: NamedOption[] = (instructorData?.data ?? [])
-    .filter((c: Person) => c.instructors?.length > 0)
-    .map((c: Person) => ({ id: c.instructors[0].id, name: c.name }));
+    .filter((c: People) => c.instructors != null)
+    .map((c: People) => ({ id: c.instructors!.id, name: c.name }));
 
   const { data: partnerData } = useQuery({ queryKey: ['peoples', '', 'partner', 1], queryFn: () => getPeoples(undefined, 'partner', 1, 9999) });
   const partners: NamedOption[] = (partnerData?.data ?? [])
-    .filter((c: Person) => c.partners?.length > 0)
-    .map((c: Person) => ({ id: c.partners[0].id, name: c.name }));
+    .filter((c: People) => c.partners != null)
+    .map((c: People) => ({ id: c.partners!.id, name: c.name }));
 
   const { data: employeeData } = useQuery({ queryKey: ['peoples', '', 'employee', 1], queryFn: () => getPeoples(undefined, 'employee', 1, 9999) });
   const employees: NamedOption[] = (employeeData?.data ?? [])
-    .filter((c: Person) => (c.employees ?? []).length > 0)
-    .map((c: Person) => ({ id: c.employees![0].id, name: c.name }));
+    .filter((c: People) => c.employees != null)
+    .map((c: People) => ({ id: c.employees!.id, name: c.name }));
+
+  const { data: studentData } = useQuery({ queryKey: ['peoples', '', 'student', 1], queryFn: () => getPeoples(undefined, 'student', 1, 9999) });
+  const students: NamedOption[] = (studentData?.data ?? [])
+    .filter((c: People) => c.students != null)
+    .map((c: People) => ({ id: c.students!.id, name: c.name }));
 
   const { data: companiesData } = useQuery({ queryKey: ['companies', '', 1], queryFn: () => getCompanies(undefined, 1, 9999) });
   const companies: Company[] = companiesData?.data ?? [];
 
   const { data, isLoading } = useQuery({
     queryKey: ['receivables', tab, debouncedSearch, dateFrom, dateTo, page],
-    queryFn: () => getReceivables(tab === 'all' ? undefined : tab, debouncedSearch || undefined, dateFrom || undefined, dateTo || undefined, page),
+    queryFn: () => getReceivables(tab, debouncedSearch || undefined, dateFrom || undefined, dateTo || undefined, page),
   });
   const allRecs = data?.data ?? [];
 
   const deleteMut = useMutation({ mutationFn: deleteReceivable, onSuccess: () => qc.invalidateQueries({ queryKey: ['receivables'] }), onError: (e: unknown) => toast.error(extractErrorMessage(e)) });
   const bulkDeleteMut = useMutation({
-    mutationFn: (ids: number[]) => Promise.all(ids.map(id => deleteReceivable(id))),
+    mutationFn: (ids: number[]) => bulkDeleteReceivables(ids),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['receivables'] }); setSelected(new Set()); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
-  const payMut = useMutation({
-    mutationFn: ({ id, d }: { id: number; d: unknown }) => registerPayment(id, d as { amount_received: number; payment_method?: string; payment_date?: string; notes?: string }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['receivables'] }); setSettleRec(null); },
-    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
-  });
-
   const menuRec = menuState ? allRecs.find(r => r.id === menuState.id) ?? null : null;
 
   const { data: kpiData } = useQuery({ queryKey: ['receivables', 'kpi', dateFrom, dateTo], queryFn: () => getReceivables(undefined, undefined, dateFrom || undefined, dateTo || undefined, 1, 9999) });
@@ -124,14 +130,37 @@ export default function Receivables() {
       render: row => row.title,
     },
     {
-      key: 'product',
+      key: 'receivable_type',
       label: 'Tipo',
-      render: row => row.product ? <span className="inline-flex items-center px-1.5 py-px rounded-[3px] text-[11px] font-medium bg-bg-sunk text-ink-3 border border-line">{row.product}</span> : '—',
+      render: row => row.receivable_type?.name ? <Chip>{row.receivable_type.name}</Chip> : '—',
     },
     {
       key: 'payer',
       label: 'Pagador',
-      render: row => <span className="text-[12px] text-ink-3">{row.customer?.name ?? row.company?.name ?? row.instructor?.customer?.name ?? '—'}</span>,
+      render: row => {
+        const name = row.people?.name
+          ?? row.person?.name
+          ?? row.company?.name
+          ?? row.instructor?.people?.name ?? row.instructor?.customer?.name
+          ?? row.partner?.people?.name ?? row.partner?.customer?.name
+          ?? row.employee?.people?.name ?? row.employee?.customer?.name
+          ?? '—';
+        const link = row.stakeholder === 'COMPANY' ? `/companies/${row.company_id}`
+          : row.stakeholder === 'INSTRUCTOR' ? `/peoples/${row.instructor?.customer_id}`
+          : row.stakeholder === 'PARTNER' ? `/peoples/${row.partner?.customer_id}`
+          : row.stakeholder === 'EMPLOYEE' ? `/peoples/${row.employee?.customer_id}`
+          : (row.people_id ?? row.person_id) ? `/peoples/${row.people_id ?? row.person_id}`
+          : null;
+        if (!link) return <span className="text-[12px] text-ink-3">{name}</span>;
+        return (
+          <button
+            className="text-[12px] text-ink-3 hover:text-accent hover:underline underline-offset-2 cursor-pointer bg-transparent border-0 p-0 text-left"
+            onClick={e => { e.stopPropagation(); navigate(link); }}
+          >
+            {name}
+          </button>
+        );
+      },
     },
     {
       key: 'expiration_date',
@@ -159,12 +188,7 @@ export default function Receivables() {
       render: row => {
         const st = receivableStatus(row);
         const pct = Number(row.total_amount) > 0 ? Math.round((Number(row.amount_received) / Number(row.total_amount)) * 100) : 0;
-        return (
-          <div className="flex items-center gap-2">
-            <div className="flex-1 h-1.5 bg-bg-sunk rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: st === 'paid' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--line)', transition: 'width 0.3s' }} /></div>
-            <span className="font-mono text-[11px] min-w-[32px] text-right" style={{ color: st === 'paid' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--ink-3)' }}>{pct}%</span>
-          </div>
-        );
+        return <ProgressBar pct={pct} isPaid={st === 'paid'} />;
       },
     },
     {
@@ -194,113 +218,67 @@ export default function Receivables() {
       <PageHeader
         title="Títulos a receber"
         description="Títulos gerados por voos, mensalidades e serviços"
-        action={can(PERM.RECEIVABLES.CREATE) ? (
+        action={can(PERMISSIONS.RECEIVABLES.CREATE) ? (
           <Button variant="primary" onClick={() => setNewModal(true)}><Plus size={14} /> Novo título</Button>
         ) : undefined}
       />
 
       <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-4">
-      <div className="flex items-center gap-3 justify-end">
-        <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Criação</span>
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">de</span>
-          <DateInput value={pendingFrom} onChange={setPendingFrom} />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Até</span>
-          <DateInput value={pendingTo} onChange={setPendingTo} />
-        </div>
-        <Button variant="primary" onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); }}>Aplicar</Button>
-      </div>
+        <DateRangeFilter label="Criação" onApply={(from, to) => { setDateFrom(from); setDateTo(to); }} />
 
-      <div className="grid grid-cols-4 gap-3">
-        <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-          <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><BarChart3 size={18} /></div>
-          <div className="flex flex-col gap-0.5">
-            <div className="text-[12px] text-ink-3 font-medium">Valor total</div>
-            <div className="text-[20px] font-bold tracking-tight font-mono"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(total)}</div>
-          </div>
+        <div className="grid grid-cols-4 gap-3">
+          <StatCard icon={<BarChart3 size={18} />} iconVariant="default" label="Valor total" value={formatBRL(total)} prefix="R$" />
+          <StatCard icon={<ArrowDownLeft size={18} />} iconVariant="success" label="Valor recebido" value={formatBRL(received)} prefix="R$" valueVariant="success" />
+          <StatCard icon={<Clock size={18} />} iconVariant="warn" label="Valor a receber" value={formatBRL(total - received)} prefix="R$" valueVariant="warn" />
+          <StatCard icon={<AlertCircle size={18} />} iconVariant="danger" label="Valor vencido" value={formatBRL(overdue)} prefix="R$" valueVariant="danger" />
         </div>
-        <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-          <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
-          <div className="flex flex-col gap-0.5">
-            <div className="text-[12px] text-ink-3 font-medium">Valor recebido</div>
-            <div className="text-[20px] font-bold tracking-tight font-mono text-success"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(received)}</div>
-          </div>
-        </div>
-        <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-          <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn"><Clock size={18} /></div>
-          <div className="flex flex-col gap-0.5">
-            <div className="text-[12px] text-ink-3 font-medium">Valor a receber</div>
-            <div className="text-[20px] font-bold tracking-tight font-mono text-warn"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(total - received)}</div>
-          </div>
-        </div>
-        <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
-          <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-danger-soft text-danger"><AlertCircle size={18} /></div>
-          <div className="flex flex-col gap-0.5">
-            <div className="text-[12px] text-ink-3 font-medium">Valor vencido</div>
-            <div className="text-[20px] font-bold tracking-tight font-mono text-danger"><span className="text-[13px] font-medium mr-0.5">R$</span>{formatBRL(overdue)}</div>
-          </div>
-        </div>
-      </div>
 
-      <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-line flex-wrap">
-          <div className="flex items-center">
-            <div className="px-3.5 py-2 flex items-center">
-              <Checkbox checked={allSelected} onChange={toggleAll} />
+        <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-line flex-wrap">
+            <div className="flex items-center">
+              <div className="px-3.5 py-2 flex items-center">
+                <Checkbox checked={allSelected} onChange={toggleAll} />
+              </div>
+              <TabBar tabs={TABS} active={tab} onChange={setTab} />
             </div>
-            {TABS.map(([k, l]) => (
-              <button key={k}
-                className="px-3.5 py-2 text-[13px] font-medium cursor-pointer bg-transparent border-0 border-b-2 whitespace-nowrap"
-                style={{ color: tab === k ? 'var(--ink)' : 'var(--ink-3)', borderBottomColor: tab === k ? 'var(--accent)' : 'transparent', marginBottom: -1 }}
-                onClick={() => setTab(k)}
-              >{l}</button>
-            ))}
+            <div className="flex-1" />
+            <SearchInput value={search} onChange={setSearch} placeholder="Buscar por título ou pagador" minWidth={250} />
           </div>
-          <div className="flex-1" />
-          <div className="relative flex items-center">
-            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input className="pl-[30px] pr-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-[13px] text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] min-w-[250px]" placeholder="Buscar por título ou pagador" value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
+
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
+              <span className="text-[13px] font-medium text-accent-ink">{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
+              <span className="flex-1" />
+              {can(PERMISSIONS.RECEIVABLES.DELETE) && (
+                <Button variant="danger" onClick={() => bulkDeleteMut.mutate([...selected])}>
+                  <Trash2 size={14} /> Remover selecionados
+                </Button>
+              )}
+            </div>
+          )}
+
+          <Table
+            columns={columns}
+            data={allRecs}
+            keyField="id"
+            onRowClick={r => navigate(`/receivables/${r.id}`)}
+            emptyMessage="Nenhum título encontrado."
+            isLoading={isLoading}
+          />
+          <Pagination page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} limit={20} onChange={setPage} />
         </div>
-
-        {selected.size > 0 && (
-          <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
-            <span className="text-[13px] font-medium text-accent-ink">{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
-            <span className="flex-1" />
-            {can(PERM.RECEIVABLES.DELETE) && (
-              <Button variant="danger" onClick={() => bulkDeleteMut.mutate([...selected])}>
-                <Trash2 size={14} /> Remover selecionados
-              </Button>
-            )}
-          </div>
-        )}
-
-        <Table
-          columns={columns}
-          data={allRecs}
-          keyField="id"
-          onRowClick={r => navigate(`/receivables/${r.id}`)}
-          emptyMessage="Nenhum título encontrado."
-          isLoading={isLoading}
-        />
-        <Pagination page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} limit={20} onChange={setPage} />
-      </div>
       </div>
 
       {menuState && menuRec && (
         <RowMenu top={menuState.top} right={menuState.right} onClose={() => setMenuState(null)}>
-          <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => { setMenuState(null); navigate(`/receivables/${menuRec.id}`); }}><Eye size={14} /> Ver detalhes</button>
-          {can(PERM.RECEIVABLES.UPDATE) && <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => setEditRec(menuRec)}><Edit size={14} /> Editar</button>}
-          {receivableStatus(menuRec) !== 'paid' && can(PERM.RECEIVABLES.UPDATE) && <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => setSettleRec(menuRec)}><CheckIcon size={14} /> Receber</button>}
-          {can(PERM.RECEIVABLES.DELETE) && <><RowMenuSep /><button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-danger rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-danger-soft text-left" onClick={() => deleteMut.mutate(menuRec.id)}><Trash2 size={14} /> Remover</button></>}
+          <RowMenuItem icon={<Eye size={14} />} onClick={() => { setMenuState(null); navigate(`/receivables/${menuRec.id}`); }}>Ver detalhes</RowMenuItem>
+          {can(PERMISSIONS.RECEIVABLES.UPDATE) && <RowMenuItem icon={<Edit size={14} />} onClick={() => setEditRec(menuRec)}>Editar</RowMenuItem>}
+          {can(PERMISSIONS.RECEIVABLES.DELETE) && <><RowMenuSep /><RowMenuDangerItem icon={<Trash2 size={14} />} onClick={() => deleteMut.mutate(menuRec.id)}>Remover</RowMenuDangerItem></>}
         </RowMenu>
       )}
 
-      {newModal && <NewReceivableModal customers={customers} instructors={instructors} partners={partners} employees={employees} planes={planes} companies={companies} onClose={() => setNewModal(false)} onSave={d => createReceivable(d).then(() => { qc.invalidateQueries({ queryKey: ['receivables'] }); setNewModal(false); }).catch((e: unknown) => toast.error(extractErrorMessage(e)))} />}
+      {newModal && <NewReceivableModal customers={customers} students={students} instructors={instructors} partners={partners} employees={employees} planes={planes} companies={companies} onClose={() => setNewModal(false)} onSave={d => createReceivable(d).then(() => { qc.invalidateQueries({ queryKey: ['receivables'] }); setNewModal(false); }).catch((e: unknown) => toast.error(extractErrorMessage(e)))} />}
       {editRec && <EditReceivableModal rec={editRec} onClose={() => setEditRec(null)} onSave={d => updateReceivable(editRec.id, d).then(() => { qc.invalidateQueries({ queryKey: ['receivables'] }); setEditRec(null); }).catch((e: unknown) => toast.error(extractErrorMessage(e)))} />}
-      {settleRec && <SettleModal rec={settleRec} onClose={() => setSettleRec(null)} onSave={d => payMut.mutate({ id: settleRec.id, d })} />}
     </div>
   );
 }

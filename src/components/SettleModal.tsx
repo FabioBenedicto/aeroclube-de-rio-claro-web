@@ -15,7 +15,7 @@ export default function SettleModal({ rec, creditBalance = 0, onClose, onSave }:
   const remaining = Number(rec.total_amount) - Number(rec.amount_received);
   const [mode, setMode] = useState<'total' | 'partial'>('total');
   const [amount, setAmount] = useState(String(remaining));
-  const [method, setMethod] = useState('PIX');
+  const [method, setMethod] = useState('pix');
   const [useCredit, setUseCredit] = useState(false);
 
   const creditToApply = useCredit ? Math.min(creditBalance, remaining) : 0;
@@ -38,7 +38,7 @@ export default function SettleModal({ rec, creditBalance = 0, onClose, onSave }:
         <div className="flex items-start justify-between px-[18px] pt-[18px] pb-4 border-b border-line gap-3">
           <div>
             <h3 className="text-[15px] font-semibold m-0">Registrar recebimento</h3>
-            <div className="text-[11.5px] text-ink-3 mt-0.5">{rec.id} · {rec.customer?.name}</div>
+            <div className="text-[11.5px] text-ink-3 mt-0.5">{rec.id} · {rec.people?.name ?? rec.person?.name}</div>
           </div>
           <button className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={onClose}>
             <span>✕</span>
@@ -103,12 +103,12 @@ export default function SettleModal({ rec, creditBalance = 0, onClose, onSave }:
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-medium text-ink-2">Forma de pagamento</label>
                   <select className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] cursor-pointer" value={method} onChange={e => setMethod(e.target.value)}>
-                    <option>PIX</option>
-                    <option>Dinheiro</option>
-                    <option>Transferência</option>
-                    <option>Cartão de crédito</option>
-                    <option>Cartão de débito</option>
-                    <option>Cheque</option>
+                    <option value="pix">PIX</option>
+                    <option value="dinheiro">Dinheiro</option>
+                    <option value="transferencia">Transferência</option>
+                    <option value="credito">Cartão de crédito</option>
+                    <option value="debito">Cartão de débito</option>
+                    <option value="cheque">Cheque</option>
                   </select>
                 </div>
               </div>

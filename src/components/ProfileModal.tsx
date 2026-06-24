@@ -51,7 +51,7 @@ export default function ProfileModal({ onClose }: Props) {
         <form onSubmit={handleSubmit} className="p-5 flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <label className="text-[12px] font-medium text-ink-2">Senha atual</label>
-            <Input type="password" value={form.currentPassword} onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))} />
+            <Input type="password" placeholder="Senha atual" value={form.currentPassword} onChange={e => setForm(f => ({ ...f, currentPassword: e.target.value }))} />
             {errors.currentPassword && <span className={errCls}>{errors.currentPassword}</span>}
           </div>
           <div className="flex flex-col gap-1">
@@ -61,7 +61,7 @@ export default function ProfileModal({ onClose }: Props) {
           </div>
           <div className="flex flex-col gap-1">
             <label className="text-[12px] font-medium text-ink-2">Confirmar nova senha</label>
-            <Input type="password" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} />
+            <Input type="password" placeholder="Confirmar nova senha" value={form.confirmPassword} onChange={e => setForm(f => ({ ...f, confirmPassword: e.target.value }))} />
             {errors.confirmPassword && <span className={errCls}>{errors.confirmPassword}</span>}
           </div>
           <div className="flex justify-end gap-2 pt-1">

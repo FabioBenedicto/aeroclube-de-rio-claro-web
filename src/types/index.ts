@@ -10,7 +10,7 @@ export interface User {
   id: number;
   name: string;
   email: string;
-  role: 'ADMIN' | 'EMPLOYEE';
+  role: 'ADMIN' | 'USER';
   permissions: string[];
 }
 
@@ -26,45 +26,60 @@ export interface Company {
   payables?: Payable[];
 }
 
-export interface Customer {
+export type PeopleCategory = 'student' | 'partner' | 'instructor' | 'employee';
+
+export interface PeopleAddress {
+  id: number;
+  street: string | null;
+  neighborhood: string | null;
+  city: string | null;
+  state: string | null;
+  zip_code: string | null;
+  people_id: number;
+}
+
+export interface People {
   id: number;
   cpf: string;
   name: string;
   email: string;
   phone_number?: string;
-  flight_hour_balance: number;
   credit_balance?: number;
   created_at: string;
-  categories: string[]; // ['aluno', 'socio', 'instrutor']
-  address?: string;
-  neighborhood?: string;
-  city?: string;
-  state?: string;
-  zip_code?: string;
-  instructors: Instructor[];
-  students: Student[];
-  partners: Partner[];
-  employees?: Employee[];
-  flights?: Flight[];
+  categories: PeopleCategory[];
+  address?: PeopleAddress | null;
+  instructors?: Instructor | null;
+  students?: Student | null;
+  partners?: Partner | null;
+  employees?: Employee | null;
   receivables?: Receivable[];
 }
 
 export interface Instructor {
   id: number;
   customer_id: number;
-  customer?: Customer;
+  people_id?: number;
+  created_at?: string;
+  customer?: People;
+  people?: People;
   receivables?: Receivable[];
 }
 
 export interface Employee {
   id: number;
   customer_id: number;
-  customer?: Customer;
+  people_id?: number;
+  created_at?: string;
+  customer?: People;
+  people?: People;
 }
 
 export interface Student {
   id: number;
   customer_id: number;
+  people_id?: number;
+  created_at?: string;
+  people?: People;
 }
 
 export interface Partner {
@@ -73,14 +88,17 @@ export interface Partner {
   next_due_date?: string;
   last_payment_date?: string;
   customer_id: number;
-  customer?: Customer;
+  people_id?: number;
+  created_at?: string;
+  customer?: People;
+  people?: People;
 }
 
 export interface Plane {
   id: number;
   registration: string;
   model?: string;
-  aircraft_type: string;
+  type: string;
   flight_hour_value?: number | null;
   flights?: Flight[];
   payables?: Payable[];
@@ -101,12 +119,12 @@ export interface FlightCalculationBreakdown {
 
 export interface Flight {
   id: number;
-  plane_id: number;
-  customer_id: number;
+  aircraft_id: number;
+  people_id: number;
+  student_id?: number;
+  partner_id?: number;
   instructor_id?: number;
-  aircraft_type: string;
   type: string;
-  double_command: boolean;
   origin: string;
   destination: string;
   start_date: string;
@@ -114,19 +132,31 @@ export interface Flight {
   total_hours?: number;
   total_amount?: number;
   calculation_breakdown?: FlightCalculationBreakdown | null;
-  plane?: Plane;
-  customer?: Customer;
+  aircraft?: Plane;
+  people?: People;
   instructor?: Instructor;
+}
+
+export interface FlightStats {
+  total: number;
+  total_hours: number | null;
+  total_revenue: number | null;
+}
+
+export interface PayableStats {
+  total_amount: number;
+  amount_paid: number;
 }
 
 export interface Receivable {
   id: number;
-  client_id?: number;
+  person_id?: number;
+  people_id?: number;
   company_id?: number;
   flight_id?: number;
   instructor_id?: number;
   plane_id?: number;
-  payer_type?: 'customer' | 'company' | 'instructor' | 'partner' | 'employee' | 'none';
+  stakeholder?: 'PEOPLE' | 'COMPANY' | 'INSTRUCTOR' | 'PARTNER' | 'EMPLOYEE' | 'NONE' | 'STUDENT';
   partner_id?: number;
   employee_id?: number;
   title: string;
@@ -134,10 +164,13 @@ export interface Receivable {
   expiration_date?: string | null;
   total_amount: number;
   amount_received: number;
-  product?: string;
-  status: number; // 0=open, 1=paid
+  receivable_type_id?: number;
+  receivable_type?: ReceivableType;
+  adds_credit?: boolean;
+  status: 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE';
   created_at: string;
-  customer?: Customer;
+  person?: People;
+  people?: People;
   company?: Company;
   flight?: Flight;
   instructor?: Instructor;
@@ -150,33 +183,34 @@ export interface Receivable {
 export interface ReceivablePayment {
   id: number;
   receivable_id: number;
-  amount_received: number;
-  payment_method?: string;
-  payment_date: string;
-  nota_fiscal_path?: string | null;
+  amount: number;
+  method?: string;
+  paid_at: string;
+  file?: { url: string; blob_path: string; original_name: string; mime_type: string; size: number } | null;
 }
 
 export interface Payable {
   id: number;
-  client_id?: number;
+  person_id?: number;
   company_id?: number;
   instructor_id?: number;
   plane_id?: number;
   partner_id?: number;
   employee_id?: number;
-  payer_type?: 'customer' | 'company' | 'instructor' | 'partner' | 'employee' | 'none';
+  stakeholder?: 'PEOPLE' | 'COMPANY' | 'INSTRUCTOR' | 'PARTNER' | 'EMPLOYEE' | 'NONE' | 'STUDENT';
   title: string;
   description?: string;
-  amount: number;
+  total_amount: number;
   amount_paid: number;
-  status: string; // 'open' | 'partial' | 'closed'
-  due_date?: string;
-  product?: string;
+  status: 'PENDING' | 'PARTIAL' | 'PAID' | 'OVERDUE';
+  expiration_date?: string;
+  payable_type_id?: number;
+  payable_type?: { id: number; name: string };
   created_at: string;
-  customer?: Customer;
+  people?: People;
   company?: Company;
   instructor?: Instructor;
-  plane?: Plane;
+  aircraft?: Plane;
   partner?: Partner;
   employee?: Employee;
   payments?: PayablePayment[];
@@ -189,21 +223,20 @@ export interface PayablePayment {
   method?: string;
   paid_at: string;
   notes?: string;
-  nota_fiscal_path?: string | null;
+  file?: { url: string; blob_path: string; original_name: string; mime_type: string; size: number } | null;
 }
 
 export interface Bill {
   id: number;
-  customer_id: number;
+  people_id: number;
   total_amount: number;
-  issue_date: string;
-  due_date?: string;
-  paid_at?: string | null;
+  created_at: string;
+  expiration_date?: string;
+  payment_date?: string | null;
   status: 'open' | 'pending_cnab' | 'paid' | 'cancelled';
-  payment_source?: 'cnab' | 'manual' | null;
   payment_method?: string | null;
-  nota_fiscal_path?: string | null;
-  customer?: Customer;
+  file?: { url: string; blob_path: string; original_name: string; mime_type: string; size: number } | null;
+  people?: People;
   receivable_payments?: BillItem[];
 }
 
@@ -211,14 +244,8 @@ export interface BillItem {
   id: number;
   bill_id: number;
   receivable_id: number;
-  amount_received: number;
+  amount: number;
   receivable?: Receivable;
-}
-
-export interface CreditHistory {
-  customer_id: number;
-  flight_hour_balance: number;
-  movements: ReceivablePayment[];
 }
 
 export interface Settings {
@@ -227,18 +254,22 @@ export interface Settings {
   glider_initial_minutes: number;
   glider_initial_value: number;
   glider_minute_value: number;
-  sicoob_cooperativa_prefix?: string;
-  sicoob_cooperativa_dv?: string;
-  sicoob_agencia?: string;
-  sicoob_conta?: string;
-  sicoob_conta_dv?: string;
-  sicoob_carteira?: string;
-  sicoob_modalidade?: string;
-  sicoob_cnpj?: string;
-  sicoob_nome_empresa?: string;
-  sicoob_remessa_sequence?: number;
-  sicoob_juros?: number;
-  sicoob_juros_prazo?: number;
+}
+
+export interface SicoobConfig {
+  cooperative_prefix?: string | null;
+  cooperative_digit?: string | null;
+  branch?: string | null;
+  account?: string | null;
+  account_digit?: string | null;
+  wallet?: string | null;
+  modality?: string | null;
+  cnpj?: string | null;
+  company_name?: string | null;
+  remittance_sequence?: number;
+  interest_rate?: number;
+  interest_period?: number;
+  interest_type?: string;
 }
 
 export interface CnabRemessa {
@@ -248,14 +279,18 @@ export interface CnabRemessa {
   bill_count: number;
   total_amount: number;
   file_path: string;
+  bill_ids?: number[];
+  bills?: Bill[];
 }
 
-export interface CnabRetorno {
+export interface PayableType {
   id: number;
-  processed_at: string;
-  paid_count: number;
-  rejected_count: number;
-  paid_ids: number[];
-  rejected_ids: number[];
-  errors: string[];
+  name: string;
+  created_at: string;
+}
+
+export interface ReceivableType {
+  id: number;
+  name: string;
+  created_at: string;
 }

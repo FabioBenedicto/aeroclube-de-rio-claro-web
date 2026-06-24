@@ -2,34 +2,35 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import { Plus, MoreHorizontal, Edit, Trash2, Check as CheckIcon } from 'lucide-react';
-import { getFlights, getFlight, createFlight, updateFlight, closeFlight, deleteFlight } from '../../api/flights';
+import { getFlights, getFlight, createFlight, updateFlight, closeFlight, deleteFlight, bulkDeleteFlights } from '../../api/flights';
 import { getPeoples } from '../../api/peoples';
 import { getPlanes } from '../../api/planes';
 import { formatDate, formatBRL, formatHours } from '../../utils/format';
-import DateInput from '../../components/DateInput';
-import type { Flight, Person, Plane } from '../../types';
+import type { Flight, People, Plane } from '../../types';
 import FlightModal from './FlightModal';
 import CloseFlightModal from './CloseFlightModal';
-import RowMenu, { RowMenuSep } from '../../components/RowMenu';
+import RowMenu, { RowMenuSep, RowMenuItem, RowMenuDangerItem } from '../../components/RowMenu';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../contexts/AuthContext';
-import { PERM } from '../../utils/permissions';
+import { PERMISSIONS } from '../../utils/permissions';
 import { toast, extractErrorMessage } from '../../utils/toast';
 import Checkbox from '../../components/ui/Checkbox';
 import Table, { type TableColumn } from '../../components/ui/Table';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
+import DateRangeFilter from '../../components/DateRangeFilter';
+import SearchInput from '../../components/ui/SearchInput';
+import TabBar, { type Tab } from '../../components/ui/TabBar';
+import Chip from '../../components/ui/Chip';
 
 type MenuState = { id: number; top: number; right: number };
 
-const TABS = [
-  { label: 'Todos', value: undefined },
-  { label: 'Instrução', value: 'Instrução' },
-  { label: 'Sócio Solo', value: 'Sócio Solo' },
-  { label: 'Sócio Duplo Comando', value: 'Sócio Duplo Comando' },
-] as const;
-
-type TabValue = typeof TABS[number]['value'];
+const TABS: Tab[] = [
+  { key: undefined, label: 'Todos' },
+  { key: 'Instrução', label: 'Instrução' },
+  { key: 'Sócio Solo', label: 'Sócio Solo' },
+  { key: 'Sócio Duplo Comando', label: 'Sócio Duplo Comando' },
+];
 
 export default function Flights() {
   const qc = useQueryClient();
@@ -37,12 +38,10 @@ export default function Flights() {
   const [searchParams] = useSearchParams();
   const highlightId = searchParams.get('id') ? Number(searchParams.get('id')) : null;
 
-  const [tab, setTab] = useState<TabValue>(undefined);
+  const [tab, setTab] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [pendingFrom, setPendingFrom] = useState('');
-  const [pendingTo, setPendingTo] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
@@ -74,7 +73,7 @@ export default function Flights() {
   const isLoading2 = highlightId != null ? loadingSingle : isLoading;
 
   const { data: customersData } = useQuery({ queryKey: ['peoples', '', 'all', 1], queryFn: () => getPeoples(undefined, undefined, 1, 9999) });
-  const customers: Person[] = customersData?.data ?? [];
+  const customers: People[] = customersData?.data ?? [];
 
   const { data: planesData } = useQuery({ queryKey: ['planes', 1], queryFn: () => getPlanes(1, 9999) });
   const planes: Plane[] = planesData?.data ?? [];
@@ -91,7 +90,7 @@ export default function Flights() {
   });
   const deleteMut = useMutation({ mutationFn: deleteFlight, onSuccess: () => qc.invalidateQueries({ queryKey: ['flights'] }), onError: (e: unknown) => toast.error(extractErrorMessage(e)) });
   const bulkDeleteMut = useMutation({
-    mutationFn: (ids: number[]) => Promise.all(ids.map(id => deleteFlight(id))),
+    mutationFn: (ids: number[]) => bulkDeleteFlights(ids),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['flights'] }); setSelected(new Set()); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
@@ -117,29 +116,29 @@ export default function Flights() {
       render: row => <span className="font-mono text-[11.5px]">{row.id}</span>,
     },
     {
-      key: 'plane',
+      key: 'aircraft',
       label: 'Aeronave',
       render: row => (
         <span className="flex items-center gap-1.5 font-medium">
-          {row.plane?.registration ?? `${row.plane_id}`}
-          {row.aircraft_type === 'glider' && <span className="inline-block px-1.5 py-0.5 text-[10px] font-semibold rounded bg-bg-sunk text-ink-3 border border-line leading-none">Planador</span>}
+          {row.aircraft?.registration ?? String(row.aircraft_id)}
+          {row.aircraft?.type === 'GLIDER' && <span className="inline-block px-1.5 py-0.5 text-[10px] font-semibold rounded bg-bg-sunk text-ink-3 border border-line leading-none">Planador</span>}
         </span>
       ),
     },
     {
-      key: 'customer',
+      key: 'people',
       label: 'Cliente',
-      render: row => row.customer?.name ?? `${row.customer_id}`,
+      render: row => row.people?.name ?? String(row.people_id),
     },
     {
       key: 'instructor',
       label: 'Instrutor',
-      render: row => row.instructor?.customer?.name ?? '—',
+      render: row => row.instructor?.people?.name ?? '—',
     },
     {
       key: 'type',
       label: 'Tipo',
-      render: row => row.type,
+      render: row => row.type ? <Chip>{row.type}</Chip> : '—',
     },
     {
       key: 'route',
@@ -198,7 +197,7 @@ export default function Flights() {
       <PageHeader
         title="Voos"
         description="Registro de operações de voo"
-        action={can(PERM.FLIGHTS.CREATE) ? (
+        action={can(PERMISSIONS.FLIGHTS.CREATE) ? (
           <Button variant="primary" onClick={() => setRegisterModal(true)}>
             <Plus size={14} /> Novo voo
           </Button>
@@ -206,87 +205,58 @@ export default function Flights() {
       />
 
       <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-4">
-      <div className="flex items-center gap-3 justify-end">
-        <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Início</span>
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">de</span>
-          <DateInput value={pendingFrom} onChange={setPendingFrom} />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Até</span>
-          <DateInput value={pendingTo} onChange={setPendingTo} />
-        </div>
-        <Button variant="primary" onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); setPage(1); }}>Aplicar</Button>
-      </div>
+        <DateRangeFilter label="Início" onApply={(from, to) => { setDateFrom(from); setDateTo(to); setPage(1); }} />
 
-      <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-line flex-wrap">
-          <div className="flex items-center">
-            <div className="px-3.5 py-2 flex items-center">
-              <Checkbox checked={allSelected} onChange={toggleAll} />
+        <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-line flex-wrap">
+            <div className="flex items-center">
+              <div className="px-3.5 py-2 flex items-center">
+                <Checkbox checked={allSelected} onChange={toggleAll} />
+              </div>
+              <TabBar tabs={TABS} active={tab} onChange={t => { setTab(t); setPage(1); }} />
             </div>
-            {TABS.map(t => (
-              <button
-                key={String(t.value)}
-                onClick={() => { setTab(t.value); setPage(1); }}
-                className="px-3.5 py-2 text-[13px] font-medium cursor-pointer bg-transparent border-0 border-b-2 whitespace-nowrap"
-                style={{ color: tab === t.value ? 'var(--ink)' : 'var(--ink-3)', borderBottomColor: tab === t.value ? 'var(--accent)' : 'transparent', marginBottom: -1 }}
-              >
-                {t.label}
-              </button>
-            ))}
+            <div className="flex-1" />
+            <SearchInput value={search} onChange={setSearch} placeholder="Buscar por aeronave ou cliente" minWidth={260} />
           </div>
-          <div className="flex-1" />
-          <div className="relative flex items-center">
-            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input
-              className="pl-[30px] pr-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-[13px] text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] min-w-[260px]"
-              placeholder="Buscar por aeronave ou cliente"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
+
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
+              <span className="text-[13px] font-medium text-accent-ink">{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
+              <span className="flex-1" />
+              {can(PERMISSIONS.FLIGHTS.DELETE) && (
+                <Button variant="danger" onClick={() => bulkDeleteMut.mutate([...selected])}>
+                  <Trash2 size={14} /> Remover selecionados
+                </Button>
+              )}
+            </div>
+          )}
+
+          <Table
+            columns={columns}
+            data={flights}
+            keyField="id"
+            emptyMessage="Nenhum voo encontrado."
+            isLoading={isLoading2}
+          />
+          {highlightId == null && <Pagination page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} limit={20} onChange={setPage} />}
         </div>
-
-        {selected.size > 0 && (
-          <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
-            <span className="text-[13px] font-medium text-accent-ink">{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
-            <span className="flex-1" />
-            {can(PERM.FLIGHTS.DELETE) && (
-              <Button variant="danger" onClick={() => bulkDeleteMut.mutate([...selected])}>
-                <Trash2 size={14} /> Remover selecionados
-              </Button>
-            )}
-          </div>
-        )}
-
-        <Table
-          columns={columns}
-          data={flights}
-          keyField="id"
-          emptyMessage="Nenhum voo encontrado."
-          isLoading={isLoading2}
-        />
-        {highlightId == null && <Pagination page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} limit={20} onChange={setPage} />}
-      </div>
-
       </div>
 
       {menuState && menuFlight && (
         <RowMenu top={menuState.top} right={menuState.right} onClose={() => setMenuState(null)}>
-          {!menuFlight.end_date && can(PERM.FLIGHTS.UPDATE) && (
-            <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => { setMenuState(null); setClosingFlight(menuFlight); }}><CheckIcon size={14} /> Encerrar voo</button>
+          {!menuFlight.end_date && can(PERMISSIONS.FLIGHTS.UPDATE) && (
+            <RowMenuItem icon={<CheckIcon size={14} />} onClick={() => { setMenuState(null); setClosingFlight(menuFlight); }}>Encerrar voo</RowMenuItem>
           )}
-          {can(PERM.FLIGHTS.UPDATE) && <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => setEditFlight(menuFlight)}><Edit size={14} /> Editar</button>}
-          {can(PERM.FLIGHTS.DELETE) && <><RowMenuSep /><button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-danger rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-danger-soft text-left" onClick={() => deleteMut.mutate(menuFlight.id)}><Trash2 size={14} /> Remover</button></>}
+          {can(PERMISSIONS.FLIGHTS.UPDATE) && <RowMenuItem icon={<Edit size={14} />} onClick={() => setEditFlight(menuFlight)}>Editar</RowMenuItem>}
+          {can(PERMISSIONS.FLIGHTS.DELETE) && <><RowMenuSep /><RowMenuDangerItem icon={<Trash2 size={14} />} onClick={() => deleteMut.mutate(menuFlight.id)}>Remover</RowMenuDangerItem></>}
         </RowMenu>
       )}
 
       {registerModal && (
-        <FlightModal mode="new" customers={customers} planes={planes} onClose={() => setRegisterModal(false)} onSave={(d) => createMut.mutate(d)} />
+        <FlightModal mode="new" planes={planes} onClose={() => setRegisterModal(false)} onSave={(d) => createMut.mutate(d)} />
       )}
       {editFlight && (
-        <FlightModal mode="edit" flight={editFlight} customers={customers} planes={planes} onClose={() => setEditFlight(null)} onSave={(data) => updateMut.mutate({ id: editFlight.id, data })} />
+        <FlightModal mode="edit" flight={editFlight} planes={planes} onClose={() => setEditFlight(null)} onSave={(data) => updateMut.mutate({ id: editFlight.id, data })} />
       )}
       {closingFlight && (
         <CloseFlightModal flight={closingFlight} onClose={() => setClosingFlight(null)} onSave={(end_date) => closeFlight(closingFlight.id, end_date).then(() => { qc.invalidateQueries({ queryKey: ['flights'] }); setClosingFlight(null); }).catch((e: unknown) => toast.error(extractErrorMessage(e)))} />

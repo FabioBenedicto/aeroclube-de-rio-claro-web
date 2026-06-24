@@ -1,23 +1,22 @@
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Trash2, Check as CheckIcon, Paperclip, ExternalLink } from 'lucide-react';
-import { getReceivable, deletePayment, registerPayment, uploadPaymentNotaFiscal, deletePaymentNotaFiscal } from '../../api/receivables';
+import { ChevronLeft, Trash2, Paperclip, ExternalLink } from 'lucide-react';
+import { getReceivable, deletePayment, uploadPaymentNotaFiscal, deletePaymentNotaFiscal } from '../../api/receivables';
 import { formatBRL, formatDate, formatDateTime, receivableStatus, STATUS_LABEL, STATUS_BADGE } from '../../utils/format';
-import SettleModal from '../../components/SettleModal';
 import Badge from '../../components/ui/Badge';
+import Chip from '../../components/ui/Chip';
+import Button from '../../components/ui/Button';
+import Skeleton from '../../components/ui/Skeleton';
 
 type BadgeVariant = 'success' | 'warn' | 'danger' | 'accent' | 'default';
-
-const UPLOADS_BASE = 'http://localhost:3001';
 
 const thCls = 'px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
 const thNumCls = 'px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
 const tdCls = 'px-3.5 py-2.5 border-b border-line';
-const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 
-function NfCell({ paymentId, receivableId, path, onChanged }: {
-  paymentId: number; receivableId: number; path?: string | null; onChanged: () => void;
+function NfCell({ paymentId, receivableId, path, fileName, onChanged }: {
+  paymentId: number; receivableId: number; path?: string | null; fileName?: string; onChanged: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadMut = useMutation({
@@ -32,17 +31,21 @@ function NfCell({ paymentId, receivableId, path, onChanged }: {
     <td className={`${tdCls} whitespace-nowrap`}>
       {path ? (
         <span className="flex items-center gap-1">
-          <a href={`${UPLOADS_BASE}${path}`} target="_blank" rel="noopener noreferrer" className="text-accent flex items-center gap-0.5 text-[12px] hover:underline">
-            <Paperclip size={12} /> NF <ExternalLink size={11} />
+          <a href={path} target="_blank" rel="noopener noreferrer"
+            className="text-accent flex items-center gap-1 text-[12px] hover:underline max-w-[140px]"
+            title={fileName}>
+            <Paperclip size={12} className="flex-shrink-0" />
+            <span className="truncate">{fileName ?? 'NF'}</span>
+            <ExternalLink size={11} className="flex-shrink-0" />
           </a>
-          <button className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-danger cursor-pointer hover:bg-bg-hover" onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}>
+          <button className="inline-flex items-center justify-center w-6 h-6 rounded-[5px] border-0 bg-transparent text-danger cursor-pointer hover:bg-bg-hover" onClick={() => deleteMut.mutate()} disabled={deleteMut.isPending}>
             <Trash2 size={12} />
           </button>
         </span>
       ) : (
-        <button className={iconBtn} title="Anexar NF" onClick={() => fileRef.current?.click()} disabled={uploadMut.isPending}>
+        <Button variant="icon" title="Anexar NF" onClick={() => fileRef.current?.click()} disabled={uploadMut.isPending}>
           <Paperclip size={13} />
-        </button>
+        </Button>
       )}
       <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) uploadMut.mutate(f); e.target.value = ''; }} />
@@ -55,8 +58,6 @@ export default function ReceivableDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const receivableId = Number(id);
-  const [showSettle, setShowSettle] = useState(false);
-
   const { data: rec, isLoading } = useQuery({
     queryKey: ['receivable', receivableId],
     queryFn: () => getReceivable(receivableId),
@@ -67,12 +68,34 @@ export default function ReceivableDetail() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['receivable', receivableId] }),
   });
 
-  const payMut = useMutation({
-    mutationFn: (d: unknown) => registerPayment(receivableId, d as { amount_received: number; payment_method?: string; payment_date?: string; use_credit?: boolean }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['receivable', receivableId] }); setShowSettle(false); },
-  });
-
-  if (isLoading) return <div className="p-8 text-[13px] text-ink-3">Carregando…</div>;
+  if (isLoading) return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <Skeleton.Block className="h-[13px] w-14 mb-1" />
+          <Skeleton.Title width="w-64" />
+          <div className="flex items-center gap-2 mt-1">
+            <Skeleton.Block className="h-5 w-16 rounded-full" />
+            <Skeleton.Text width="w-32" />
+          </div>
+        </div>
+      </div>
+      <div>
+        <Skeleton.Block className="h-[18px] w-28 mb-3 rounded" />
+        <div className="grid grid-cols-4 gap-3">
+          {[0, 1, 2, 3].map(i => <Skeleton.Card key={i} />)}
+        </div>
+      </div>
+      <div>
+        <Skeleton.Block className="h-[18px] w-44 mb-3 rounded" />
+        <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+          <table className="w-full border-collapse">
+            <tbody><Skeleton.TableRows cols={5} rows={4} /></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
   if (!rec) return <div className="p-8 text-[13px] text-ink-3">Título não encontrado.</div>;
 
   const st = receivableStatus(rec);
@@ -90,16 +113,11 @@ export default function ReceivableDetail() {
           </button>
           <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">{rec.id} · {rec.title}</h1>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2">
-            {rec.product && <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-bg-sunk border border-line text-ink-2">{rec.product}</span>}
+            {(rec.receivable_type?.name ?? rec.product) && <Chip>{rec.receivable_type?.name ?? rec.product}</Chip>}
             <span className="text-[13px] text-ink-3 font-mono text-[12px]">Vencimento {formatDate(rec.expiration_date)}</span>
             <Badge variant={(STATUS_BADGE[st] ?? 'default') as BadgeVariant}>{STATUS_LABEL[st]}</Badge>
           </div>
         </div>
-        {st !== 'paid' && (
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90" onClick={() => setShowSettle(true)}><CheckIcon size={14} /> Receber</button>
-          </div>
-        )}
       </div>
 
       {rec.description && (
@@ -109,74 +127,87 @@ export default function ReceivableDetail() {
         </div>
       )}
 
-      {(rec.customer || rec.company || rec.instructor || rec.plane || rec.partner || rec.employee) && (() => {
-        const pt = rec.payer_type;
+      {(rec.people || rec.person || rec.company || rec.instructor || rec.plane || rec.partner || rec.employee || rec.flight_id) && (() => {
+        const pt = rec.stakeholder;
         const btnCls = 'flex flex-col px-3.5 py-2.5 text-left cursor-pointer bg-bg-elev border border-line rounded-lg hover:bg-bg-hover';
         const labelCls = 'text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-0.5';
         const valueCls = 'text-[13.5px] font-medium text-ink';
+        const recPeople = rec.people ?? rec.person;
+        const instrPeople = rec.instructor?.people ?? rec.instructor?.customer;
+        const instrPeopleId = rec.instructor?.people_id ?? rec.instructor?.customer_id;
+        const partnerPeople = rec.partner?.people ?? rec.partner?.customer;
+        const partnerPeopleId = rec.partner?.people_id ?? rec.partner?.customer_id;
+        const employeePeople = rec.employee?.people ?? rec.employee?.customer;
+        const employeePeopleId = rec.employee?.people_id ?? rec.employee?.customer_id;
 
-        const payerNode = pt === 'customer' && rec.customer ? (
-          <button className={btnCls} onClick={() => navigate(`/pessoas/${rec.customer!.id}`)}>
+        const payerNode = pt === 'PEOPLE' && recPeople ? (
+          <button className={btnCls} onClick={() => navigate(`/peoples/${recPeople.id}`)}>
             <div className={labelCls}>Pessoa</div>
-            <div className={valueCls}>{rec.customer.name}</div>
+            <div className={valueCls}>{recPeople.name}</div>
           </button>
-        ) : pt === 'company' && rec.company ? (
+        ) : pt === 'COMPANY' && rec.company ? (
           <button className={btnCls} onClick={() => navigate(`/companies/${rec.company!.id}`)}>
             <div className={labelCls}>Empresa</div>
             <div className={valueCls}>{rec.company.name}</div>
           </button>
-        ) : pt === 'instructor' && rec.instructor?.customer ? (
-          <button className={btnCls} onClick={() => navigate(`/pessoas/${rec.instructor!.customer_id}`)}>
+        ) : pt === 'INSTRUCTOR' && instrPeople ? (
+          <button className={btnCls} onClick={() => navigate(`/peoples/${instrPeopleId}`)}>
             <div className={labelCls}>Instrutor</div>
-            <div className={valueCls}>{rec.instructor.customer.name}</div>
+            <div className={valueCls}>{instrPeople.name}</div>
           </button>
-        ) : pt === 'partner' && rec.partner?.customer ? (
-          <button className={btnCls} onClick={() => navigate(`/pessoas/${rec.partner!.customer_id}`)}>
+        ) : pt === 'PARTNER' && partnerPeople ? (
+          <button className={btnCls} onClick={() => navigate(`/peoples/${partnerPeopleId}`)}>
             <div className={labelCls}>Sócio</div>
-            <div className={valueCls}>{rec.partner.customer.name}</div>
+            <div className={valueCls}>{partnerPeople.name}</div>
           </button>
-        ) : pt === 'employee' && rec.employee?.customer ? (
-          <button className={btnCls} onClick={() => navigate(`/pessoas/${rec.employee!.customer_id}`)}>
+        ) : pt === 'EMPLOYEE' && employeePeople ? (
+          <button className={btnCls} onClick={() => navigate(`/peoples/${employeePeopleId}`)}>
             <div className={labelCls}>Funcionário</div>
-            <div className={valueCls}>{rec.employee.customer.name}</div>
+            <div className={valueCls}>{employeePeople.name}</div>
           </button>
         ) : null;
 
         const assocNodes = [
-          pt !== 'customer' && rec.customer && (
-            <button key="customer" className={btnCls} onClick={() => navigate(`/pessoas/${rec.customer!.id}`)}>
+          pt !== 'PEOPLE' && recPeople && (
+            <button key="person" className={btnCls} onClick={() => navigate(`/peoples/${recPeople.id}`)}>
               <div className={labelCls}>Pessoa</div>
-              <div className={valueCls}>{rec.customer.name}</div>
+              <div className={valueCls}>{recPeople.name}</div>
             </button>
           ),
-          pt !== 'company' && rec.company && (
+          pt !== 'COMPANY' && rec.company && (
             <button key="company" className={btnCls} onClick={() => navigate(`/companies/${rec.company!.id}`)}>
               <div className={labelCls}>Empresa</div>
               <div className={valueCls}>{rec.company.name}</div>
             </button>
           ),
-          pt !== 'instructor' && rec.instructor?.customer && (
-            <button key="instructor" className={btnCls} onClick={() => navigate(`/pessoas/${rec.instructor!.customer_id}`)}>
+          pt !== 'INSTRUCTOR' && instrPeople && (
+            <button key="instructor" className={btnCls} onClick={() => navigate(`/peoples/${instrPeopleId}`)}>
               <div className={labelCls}>Instrutor</div>
-              <div className={valueCls}>{rec.instructor.customer.name}</div>
+              <div className={valueCls}>{instrPeople.name}</div>
             </button>
           ),
-          pt !== 'partner' && rec.partner?.customer && (
-            <button key="partner" className={btnCls} onClick={() => navigate(`/pessoas/${rec.partner!.customer_id}`)}>
+          pt !== 'PARTNER' && partnerPeople && (
+            <button key="partner" className={btnCls} onClick={() => navigate(`/peoples/${partnerPeopleId}`)}>
               <div className={labelCls}>Sócio</div>
-              <div className={valueCls}>{rec.partner.customer.name}</div>
+              <div className={valueCls}>{partnerPeople.name}</div>
             </button>
           ),
-          pt !== 'employee' && rec.employee?.customer && (
-            <button key="employee" className={btnCls} onClick={() => navigate(`/pessoas/${rec.employee!.customer_id}`)}>
+          pt !== 'EMPLOYEE' && employeePeople && (
+            <button key="employee" className={btnCls} onClick={() => navigate(`/peoples/${employeePeopleId}`)}>
               <div className={labelCls}>Funcionário</div>
-              <div className={valueCls}>{rec.employee.customer.name}</div>
+              <div className={valueCls}>{employeePeople.name}</div>
             </button>
           ),
           rec.plane && (
             <button key="plane" className={btnCls} onClick={() => navigate(`/planes/${rec.plane!.id}`)}>
               <div className={labelCls}>Aeronave</div>
               <div className={`${valueCls} font-mono`}>{rec.plane.registration}{rec.plane.model ? ` · ${rec.plane.model}` : ''}</div>
+            </button>
+          ),
+          rec.flight_id && (
+            <button key="flight" className={btnCls} onClick={() => navigate('/flights')}>
+              <div className={labelCls}>Voo</div>
+              <div className={`${valueCls} font-mono`}>#{rec.flight_id}</div>
             </button>
           ),
         ].filter(Boolean);
@@ -249,14 +280,15 @@ export default function ReceivableDetail() {
               <tbody>
                 {(rec.payments ?? []).map(p => (
                   <tr key={p.id} className="hover:bg-bg-hover">
-                    <td className={`${tdCls} font-mono text-[12px]`}>{formatDateTime(p.payment_date)}</td>
-                    <td className={tdCls}>{p.payment_method ?? '—'}</td>
-                    <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(p.amount_received)}</td>
-                    {p.payment_method === 'Crédito' ? <td className={tdCls} /> : (
+                    <td className={`${tdCls} font-mono text-[12px]`}>{formatDateTime(p.paid_at)}</td>
+                    <td className={tdCls}>{p.method ?? '—'}</td>
+                    <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(p.amount)}</td>
+                    {p.method === 'Crédito' ? <td className={tdCls} /> : (
                       <NfCell
                         paymentId={p.id}
                         receivableId={receivableId}
-                        path={p.nota_fiscal_path}
+                        path={p.file?.url}
+                        fileName={p.file?.original_name}
                         onChanged={() => qc.invalidateQueries({ queryKey: ['receivable', receivableId] })}
                       />
                     )}
@@ -289,7 +321,6 @@ export default function ReceivableDetail() {
         </div>
       </div>
 
-      {showSettle && <SettleModal rec={rec} creditBalance={Number(rec.customer?.credit_balance ?? 0)} onClose={() => setShowSettle(false)} onSave={d => payMut.mutate(d)} />}
     </div>
   );
 }

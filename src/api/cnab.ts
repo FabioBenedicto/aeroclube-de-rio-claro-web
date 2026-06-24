@@ -1,13 +1,5 @@
 import client from './client';
-import type { Bill, CnabRemessa, CnabRetorno, PaginatedResponse } from '../types';
-
-export interface RetornoResult {
-  paid: number[];
-  rejected: number[];
-  errors: string[];
-  updated: number[];
-  retorno_id: number;
-}
+import type { Bill, CnabRemessa, PaginatedResponse } from '../types';
 
 export const getBillsPending = (
   page = 1,
@@ -34,25 +26,21 @@ export const createBoletoBill = (data: {
 }) => client.post<Bill>('/bills/boleto', data).then(r => r.data);
 
 export const generateRemessa = (bill_ids: number[]) =>
-  client.post<CnabRemessa>('/cnab/remessa', { bill_ids }).then(r => r.data);
+  client.post<CnabRemessa>('/cnab/remittent', { bill_ids }).then(r => r.data);
+
+export const getRemessa = (id: number) =>
+  client.get<import('../types').CnabRemessa>(`/cnab/remittent/${id}`).then(r => r.data);
 
 export const getRemessas = (page = 1, limit = 20) =>
   client
-    .get<PaginatedResponse<CnabRemessa>>('/cnab/remessas', { params: { page, limit } })
+    .get<PaginatedResponse<CnabRemessa>>('/cnab/remittent', { params: { page, limit } })
     .then(r => r.data);
 
 export const downloadRemessa = (id: number) =>
   client
-    .get<Blob>(`/cnab/remessas/${id}/download`, { responseType: 'blob' })
+    .get<Blob>(`/cnab/remittent/${id}/download`, { responseType: 'blob' })
     .then(r => r.data);
 
-export const getRetornos = (page = 1, limit = 20) =>
-  client
-    .get<PaginatedResponse<CnabRetorno>>('/cnab/retornos', { params: { page, limit } })
-    .then(r => r.data);
+export const deleteRemessa = (id: number) =>
+  client.delete(`/cnab/remittent/${id}`).then(r => r.data);
 
-export const processRetorno = (file: File) => {
-  const fd = new FormData();
-  fd.append('file', file);
-  return client.post<RetornoResult>('/cnab/retorno', fd).then(r => r.data);
-};

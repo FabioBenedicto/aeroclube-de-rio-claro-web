@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+﻿import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-  LineChart, BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  LineChart, ComposedChart, BarChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell,
   AreaChart, Area,
 } from 'recharts';
@@ -57,7 +57,7 @@ function getMonthsBetween(ym1: string, ym2: string): string[] {
   return result;
 }
 
-function buildGrowthData(customers: import('../types').Person[], months: string[]) {
+function buildGrowthData(customers: import('../types').People[], months: string[]) {
   return months.map(m => {
     const alunos = customers.filter(c => c.categories.includes('student') && c.created_at.slice(0, 7) <= m).length;
     const socios = customers.filter(c => c.categories.includes('partner') && c.created_at.slice(0, 7) <= m).length;
@@ -118,7 +118,7 @@ function buildChartData(receivables: Receivable[], payables: Payable[], months: 
   payables.forEach(p => {
     const m = p.created_at.slice(0, 7);
     if (payMap.has(m)) {
-      payMap.set(m, payMap.get(m)! + Number(p.amount));
+      payMap.set(m, payMap.get(m)! + Number(p.total_amount));
       paidMap.set(m, paidMap.get(m)! + Number(p.amount_paid));
     }
   });
@@ -387,18 +387,19 @@ export default function Dashboard() {
   const payables      = payData?.data ?? [];
   const flights       = flightsData?.data ?? [];
   const allCustomers  = customersData?.data ?? [];
-  const loadingKpi    = (ready && (loadingRec || loadingPay)) || !ready;
+  const loadingKpi        = (ready && (loadingRec || loadingPay)) || !ready;
+  const loadingFlightKpi  = (ready && loadingFlights) || !ready;
 
   const periodRec     = receivables.reduce((s, r) => s + Number(r.total_amount), 0);
   const periodRecvd   = receivables.reduce((s, r) => s + Number(r.amount_received), 0);
   const periodRecOpen = receivables
-    .filter(r => r.status !== 1)
+    .filter(r => r.status !== 'PAID')
     .reduce((s, r) => s + Math.max(0, Number(r.total_amount) - Number(r.amount_received)), 0);
-  const periodPay     = payables.reduce((s, p) => s + Number(p.amount), 0);
+  const periodPay     = payables.reduce((s, p) => s + Number(p.total_amount), 0);
   const periodPaid    = payables.reduce((s, p) => s + Number(p.amount_paid), 0);
   const periodPayOpen = payables
-    .filter(p => p.status !== 'closed')
-    .reduce((s, p) => s + Math.max(0, Number(p.amount) - Number(p.amount_paid)), 0);
+    .filter(p => p.status !== 'PAID')
+    .reduce((s, p) => s + Math.max(0, Number(p.total_amount) - Number(p.amount_paid)), 0);
   const alunosCount = allCustomers.filter(c => c.categories.includes('student')).length;
   const sociosCount = allCustomers.filter(c => c.categories.includes('partner')).length;
   const totalFlightHours = flights.reduce((s, f) => s + Number(f.total_hours ?? 0), 0);
@@ -419,11 +420,19 @@ export default function Dashboard() {
   );
 
   const recProductPieData = useMemo(
-    () => buildGroupPieData(receivables, r => r.product?.trim() || 'Outros', r => Number(r.total_amount)),
+    () => buildGroupPieData(
+      receivables,
+      r => r.receivable_type?.name?.trim() || r.title?.trim() || 'Outros',
+      r => Number(r.total_amount),
+    ),
     [receivables],
   );
   const payProductPieData = useMemo(
-    () => buildGroupPieData(payables, p => p.product?.trim() || 'Outros', p => Number(p.amount)),
+    () => buildGroupPieData(
+      payables,
+      p => p.payable_type?.name?.trim() || p.title?.trim() || 'Outros',
+      p => Number(p.total_amount),
+    ),
     [payables],
   );
   const flightTypeCountData = useMemo(
@@ -521,17 +530,17 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard
           label="Quantidade de voos"
-          value={loadingKpi ? '—' : String(flights.length)}
+          value={loadingFlightKpi ? '—' : String(flights.length)}
           icon={<Plane size={18} />}
           color={summary?.flights.in_flight ? 'accent' : 'default'}
-          loading={loadingKpi}
+          loading={loadingFlightKpi}
         />
         <KpiCard
           label="Total de horas de voos"
-          value={loadingKpi ? '—' : `${totalFlightHours.toFixed(1)}h`}
+          value={loadingFlightKpi ? '—' : `${totalFlightHours.toFixed(1)}h`}
           icon={<Clock size={18} />}
           color="default"
-          loading={loadingKpi}
+          loading={loadingFlightKpi}
         />
         <KpiCard
           label="Quantidade de alunos"
@@ -650,7 +659,7 @@ export default function Dashboard() {
           <div className="h-[240px] skeleton" />
         ) : (
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={flightsChartData} barGap={4} barCategoryGap="32%">
+            <ComposedChart data={flightsChartData} barGap={4} barCategoryGap="32%">
               <CartesianGrid strokeDasharray="3 3" stroke={gridColor} vertical={false} />
               <XAxis
                 dataKey="month"
@@ -678,7 +687,7 @@ export default function Dashboard() {
               <Tooltip content={<FlightsTooltip />} cursor={{ fill: cursorFill }} />
               <Bar yAxisId="count" dataKey="Voos"  fill="var(--accent)"  radius={[4, 4, 0, 0]} maxBarSize={48} />
               <Bar yAxisId="hours" dataKey="Horas" fill="var(--success)" radius={[4, 4, 0, 0]} maxBarSize={48} />
-            </BarChart>
+            </ComposedChart>
           </ResponsiveContainer>
         )}
       </div>
@@ -688,7 +697,7 @@ export default function Dashboard() {
         <PieChartCard
           title="Distribuição de voos por tipo"
           data={flightTypeCountData}
-          loading={loadingKpi}
+          loading={loadingFlightKpi}
           empty={period === 'custom' && !ready}
           valueFormatter={countFmt}
           overflow="tipos"
@@ -696,7 +705,7 @@ export default function Dashboard() {
         <PieChartCard
           title="Horas voadas por tipo"
           data={flightTypeHoursData}
-          loading={loadingKpi}
+          loading={loadingFlightKpi}
           empty={period === 'custom' && !ready}
           valueFormatter={hoursFmt}
           overflow="tipos"

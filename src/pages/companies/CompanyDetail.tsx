@@ -1,37 +1,33 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Plus, MoreHorizontal, Trash2, Check, X, Edit, ArrowDownLeft, ArrowUpRight, Clock } from 'lucide-react';
+import { ChevronLeft, Plus, MoreHorizontal, Trash2, Check, X, Edit, ArrowDownLeft, ArrowUpRight, Clock, Hourglass } from 'lucide-react';
+import Skeleton from '../../components/ui/Skeleton';
 import { getCompany, updateCompany } from '../../api/companies';
-import { createReceivable, deleteReceivable, registerPayment } from '../../api/receivables';
-import { createPayable, deletePayable, registerPayablePayment } from '../../api/payables';
+import { createReceivable, deleteReceivable, bulkDeleteReceivables, registerPayment } from '../../api/receivables';
+import { createPayable, deletePayable, bulkDeletePayables, registerPayablePayment } from '../../api/payables';
 import DateInput from '../../components/DateInput';
 import Pagination from '../../components/Pagination';
 import { getPlanes } from '../../api/planes';
-import { formatBRL, formatDate, receivableStatus, STATUS_LABEL, STATUS_BADGE } from '../../utils/format';
-import { maskCNPJ, maskPhone } from '../../utils/masks';
+import { formatBRL, formatDate, receivableStatus, payableStatus, STATUS_LABEL, STATUS_BADGE, PAYABLE_STATUS_LABEL } from '../../utils/format';
+import { maskCNPJ, maskPhone, validateCNPJ } from '../../utils/masks';
 import type { Receivable, Payable, Company } from '../../types';
-import RowMenu, { RowMenuSep } from '../../components/RowMenu';
+import RowMenu, { RowMenuSep, RowMenuItem, RowMenuDangerItem } from '../../components/RowMenu';
+import DateRangeFilter from '../../components/DateRangeFilter';
 import Badge from '../../components/ui/Badge';
 import Checkbox from '../../components/ui/Checkbox';
 import { toast, extractErrorMessage } from '../../utils/toast';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Select from '../../components/ui/Select';
 
 type MenuState = { id: number; top: number; right: number };
 type BadgeVariant = 'success' | 'warn' | 'danger' | 'accent' | 'default';
 
-const P_STATUS_LABEL: Record<string, string> = { open: 'A pagar', partial: 'Parcial', closed: 'Pago' };
-const P_STATUS_BADGE: Record<string, string> = { open: 'warn', partial: 'accent', closed: 'success' };
 
-const inputCls = 'w-full px-3 py-1.5 text-[13px] bg-bg border border-line rounded-md text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] transition-[border-color,box-shadow] duration-100 placeholder:text-ink-3';
-const btnCancel = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink';
-const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90';
-const iconBtn = 'inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink';
 const thCls = 'px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
 const thNumCls = 'px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
 const tdCls = 'px-3.5 py-2.5 border-b border-line';
-const rowMenuBtn = 'w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left';
-const rowMenuBtnDanger = 'w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-danger rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-danger-soft text-left';
-
 function NewReceivableModal({ companyId, onClose, onSave }: { companyId: number; onClose: () => void; onSave: (d: unknown) => void }) {
   const [form, setForm] = useState({ title: '', product: 'servico', expiration_date: '', total_amount: '', plane_id: '', flight_id: '' });
   const { data: planesData } = useQuery({ queryKey: ['planes-all'], queryFn: () => getPlanes(1, 100) });
@@ -41,18 +37,18 @@ function NewReceivableModal({ companyId, onClose, onSave }: { companyId: number;
       <div className="bg-bg-elev border border-line rounded-[10px] w-full max-w-[480px] shadow-[var(--shadow)] flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
           <h3 className="text-[15px] font-semibold m-0">Novo título a receber</h3>
-          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
         <div className="px-5 py-4 overflow-y-auto flex-1 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-medium text-ink-2">Tipo</label>
-            <select className={inputCls} value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}>
+            <Select value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}>
               <option value="servico">Serviço</option><option value="mensalidade">Mensalidade</option><option value="outro">Outro</option>
-            </select>
+            </Select>
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-medium text-ink-2">Título</label>
-            <input className={inputCls} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+            <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
@@ -70,20 +66,20 @@ function NewReceivableModal({ companyId, onClose, onSave }: { companyId: number;
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Aeronave <span className="text-ink-3 font-normal">(opcional)</span></label>
-              <select className={inputCls} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
+              <Select value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
                 <option value="">—</option>
                 {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
-              </select>
+              </Select>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Voo Nº <span className="text-ink-3 font-normal">(opcional)</span></label>
-              <input type="number" className={inputCls} placeholder="ID do voo" value={form.flight_id} onChange={e => setForm(f => ({ ...f, flight_id: e.target.value }))} />
+              <Input type="number" placeholder="ID do voo" value={form.flight_id} onChange={e => setForm(f => ({ ...f, flight_id: e.target.value }))} />
             </div>
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
-          <button className={btnCancel} onClick={onClose}>Cancelar</button>
-          <button className={btnPrimary} disabled={!form.title || !form.total_amount}
+          <Button variant="default" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" disabled={!form.title || !form.total_amount}
             onClick={() => onSave({
               company_id: companyId, title: form.title, product: form.product,
               expiration_date: form.expiration_date || undefined, total_amount: parseFloat(form.total_amount),
@@ -91,7 +87,7 @@ function NewReceivableModal({ companyId, onClose, onSave }: { companyId: number;
               ...(form.flight_id && { flight_id: parseInt(form.flight_id) }),
             })}>
             <Check size={14} /> Criar título
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -107,18 +103,18 @@ function NewPayableModal({ companyId, onClose, onSave }: { companyId: number; on
       <div className="bg-bg-elev border border-line rounded-[10px] w-full max-w-[480px] shadow-[var(--shadow)] flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-shrink-0">
           <h3 className="text-[15px] font-semibold m-0">Novo título a pagar</h3>
-          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
         <div className="px-5 py-4 overflow-y-auto flex-1 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-medium text-ink-2">Tipo</label>
-            <select className={inputCls} value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}>
+            <Select value={form.product} onChange={e => setForm(f => ({ ...f, product: e.target.value }))}>
               <option value="servico">Serviço</option><option value="manutencao">Manutenção</option><option value="outro">Outro</option>
-            </select>
+            </Select>
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-medium text-ink-2">Título</label>
-            <input className={inputCls} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+            <Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
@@ -136,28 +132,28 @@ function NewPayableModal({ companyId, onClose, onSave }: { companyId: number; on
           <div className="grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Aeronave <span className="text-ink-3 font-normal">(opcional)</span></label>
-              <select className={inputCls} value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
+              <Select value={form.plane_id} onChange={e => setForm(f => ({ ...f, plane_id: e.target.value }))}>
                 <option value="">—</option>
                 {planes.map(p => <option key={p.id} value={p.id}>{p.registration}{p.model ? ` · ${p.model}` : ''}</option>)}
-              </select>
+              </Select>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Voo Nº <span className="text-ink-3 font-normal">(opcional)</span></label>
-              <input type="number" className={inputCls} placeholder="ID do voo" value={form.flight_id} onChange={e => setForm(f => ({ ...f, flight_id: e.target.value }))} />
+              <Input type="number" placeholder="ID do voo" value={form.flight_id} onChange={e => setForm(f => ({ ...f, flight_id: e.target.value }))} />
             </div>
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
-          <button className={btnCancel} onClick={onClose}>Cancelar</button>
-          <button className={btnPrimary} disabled={!form.title || !form.amount}
+          <Button variant="default" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" disabled={!form.title || !form.amount}
             onClick={() => onSave({
               company_id: companyId, title: form.title, product: form.product,
-              due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined, amount: parseFloat(form.amount),
+              expiration_date: form.due_date ? new Date(form.due_date).toISOString() : undefined, total_amount: parseFloat(form.amount),
               ...(form.plane_id && { plane_id: parseInt(form.plane_id) }),
               ...(form.flight_id && { flight_id: parseInt(form.flight_id) }),
             })}>
             <Check size={14} /> Criar título
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -168,7 +164,7 @@ function SettleReceivableModal({ rec, onClose, onSave }: { rec: Receivable; onCl
   const remaining = Number(rec.total_amount) - Number(rec.amount_received);
   const [mode, setMode] = useState<'total' | 'partial'>('total');
   const [amount, setAmount] = useState(String(remaining));
-  const [method, setMethod] = useState('PIX');
+  const [method, setMethod] = useState('pix');
   const effective = mode === 'total' ? remaining : parseFloat(amount) || 0;
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -178,7 +174,7 @@ function SettleReceivableModal({ rec, onClose, onSave }: { rec: Receivable; onCl
             <h3 className="text-[15px] font-semibold m-0">Registrar recebimento</h3>
             <div className="text-[11.5px] text-ink-3 mt-0.5">{rec.id}</div>
           </div>
-          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
         <div className="px-5 py-4 overflow-y-auto flex-1 flex flex-col gap-4">
           <div className="flex gap-2">
@@ -195,15 +191,21 @@ function SettleReceivableModal({ rec, onClose, onSave }: { rec: Receivable; onCl
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Forma de pagamento</label>
-              <select className={inputCls} value={method} onChange={e => setMethod(e.target.value)}>
-                <option>PIX</option><option>Dinheiro</option><option>Transferência</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Cheque</option>
-              </select>
+              <Select value={method} onChange={e => setMethod(e.target.value)}>
+                <option value="pix">PIX</option>
+                <option value="dinheiro">Dinheiro</option>
+                <option value="transferencia">Transferência</option>
+                <option value="credito">Cartão de crédito</option>
+                <option value="debito">Cartão de débito</option>
+                <option value="cheque">Cheque</option>
+                <option value="boleto">Boleto</option>
+              </Select>
             </div>
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
-          <button className={btnCancel} onClick={onClose}>Cancelar</button>
-          <button className={btnPrimary} onClick={() => onSave({ amount_received: effective, payment_method: method, payment_date: new Date().toISOString() })}><Check size={14} /> Confirmar recebimento</button>
+          <Button variant="default" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={() => onSave({ amount: effective, method, paid_at: new Date().toISOString() })}><Check size={14} /> Confirmar recebimento</Button>
         </div>
       </div>
     </div>
@@ -211,10 +213,10 @@ function SettleReceivableModal({ rec, onClose, onSave }: { rec: Receivable; onCl
 }
 
 function PayPayableModal({ payable, onClose, onSave }: { payable: Payable; onClose: () => void; onSave: (d: unknown) => void }) {
-  const remaining = Number(payable.amount) - Number(payable.amount_paid);
+  const remaining = Number(payable.total_amount) - Number(payable.amount_paid);
   const [mode, setMode] = useState<'total' | 'partial'>('total');
   const [amount, setAmount] = useState(String(remaining));
-  const [method, setMethod] = useState('PIX');
+  const [method, setMethod] = useState('pix');
   const effective = mode === 'total' ? remaining : parseFloat(amount) || 0;
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
@@ -224,7 +226,7 @@ function PayPayableModal({ payable, onClose, onSave }: { payable: Payable; onClo
             <h3 className="text-[15px] font-semibold m-0">Pagar título</h3>
             <div className="text-[11.5px] text-ink-3 mt-0.5">{payable.id}</div>
           </div>
-          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
         <div className="px-5 py-4 overflow-y-auto flex-1 flex flex-col gap-4">
           <div className="flex gap-2">
@@ -241,15 +243,21 @@ function PayPayableModal({ payable, onClose, onSave }: { payable: Payable; onClo
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-ink-2">Forma de pagamento</label>
-              <select className={inputCls} value={method} onChange={e => setMethod(e.target.value)}>
-                <option>PIX</option><option>Dinheiro</option><option>Transferência</option><option>Cartão de crédito</option><option>Cartão de débito</option><option>Cheque</option>
-              </select>
+              <Select value={method} onChange={e => setMethod(e.target.value)}>
+                <option value="pix">PIX</option>
+                <option value="dinheiro">Dinheiro</option>
+                <option value="transferencia">Transferência</option>
+                <option value="credito">Cartão de crédito</option>
+                <option value="debito">Cartão de débito</option>
+                <option value="cheque">Cheque</option>
+                <option value="boleto">Boleto</option>
+              </Select>
             </div>
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-3.5 border-t border-line flex-shrink-0">
-          <button className={btnCancel} onClick={onClose}>Cancelar</button>
-          <button className={btnPrimary} onClick={() => onSave({ amount: effective, method })}><Check size={14} /> Confirmar pagamento</button>
+          <Button variant="default" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" onClick={() => onSave({ amount: effective, method })}><Check size={14} /> Confirmar pagamento</Button>
         </div>
       </div>
     </div>
@@ -258,35 +266,37 @@ function PayPayableModal({ payable, onClose, onSave }: { payable: Payable; onClo
 
 function EditCompanyModal({ company, onClose, onSave }: { company: Company; onClose: () => void; onSave: (d: unknown) => void }) {
   const [form, setForm] = useState({ name: company.name ?? '', cnpj: company.cnpj ?? '', email: company.email ?? '', phone: company.phone ?? '' });
-  const inputClsModal = 'w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]';
+  const cnpjFilled = form.cnpj.replace(/\D/g, '').length === 14;
+  const cnpjValid = !cnpjFilled || validateCNPJ(form.cnpj);
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
       <div className="bg-bg-elev border border-line rounded-[10px] w-full max-w-[480px] shadow-[var(--shadow)] flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
         <div className="flex items-start justify-between px-[18px] pt-[18px] pb-4 border-b border-line gap-3 flex-shrink-0">
           <h3 className="text-[15px] font-semibold m-0">Editar empresa</h3>
-          <button className={iconBtn} onClick={onClose}><X size={16} /></button>
+          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
         </div>
         <div className="p-[18px] overflow-y-auto flex-1 flex flex-col gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-medium text-ink-2">Razão social / Nome</label>
-            <input className={inputClsModal} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-medium text-ink-2">CNPJ</label>
-            <input className={`${inputClsModal} font-mono`} value={form.cnpj} onChange={e => setForm(f => ({ ...f, cnpj: maskCNPJ(e.target.value) }))} />
+            <Input className={`font-mono ${cnpjFilled && !cnpjValid ? 'border-danger focus:border-danger' : ''}`} value={form.cnpj} onChange={e => setForm(f => ({ ...f, cnpj: maskCNPJ(e.target.value) }))} />
+            {cnpjFilled && !cnpjValid && <span className="text-[11px] text-danger">CNPJ inválido</span>}
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-medium text-ink-2">E-mail</label>
-            <input className={inputClsModal} type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+            <Input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-medium text-ink-2">Telefone</label>
-            <input className={inputClsModal} value={form.phone} onChange={e => setForm(f => ({ ...f, phone: maskPhone(e.target.value) }))} />
+            <Input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: maskPhone(e.target.value) }))} />
           </div>
         </div>
         <div className="flex items-center justify-end gap-2 px-[18px] py-3.5 border-t border-line flex-shrink-0">
-          <button className={btnCancel} onClick={onClose}>Cancelar</button>
-          <button className={btnPrimary} onClick={() => onSave({ name: form.name, cnpj: form.cnpj || undefined, email: form.email || undefined, phone: form.phone || undefined })}><Check size={14} /> Salvar</button>
+          <Button variant="default" onClick={onClose}>Cancelar</Button>
+          <Button variant="primary" disabled={cnpjFilled && !cnpjValid} onClick={() => onSave({ name: form.name, cnpj: form.cnpj || undefined, email: form.email || undefined, phone: form.phone || undefined })}><Check size={14} /> Salvar</Button>
         </div>
       </div>
     </div>
@@ -313,8 +323,6 @@ export default function CompanyDetail() {
   const [editModal, setEditModal] = useState(false);
 
   const PAGE_SIZE = 10;
-  const [pendingFrom, setPendingFrom] = useState('');
-  const [pendingTo, setPendingTo] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [tabPages, setTabPages] = useState<Record<string, number>>({ receivables: 1, payables: 1 });
@@ -327,9 +335,9 @@ export default function CompanyDetail() {
   const receivables = company?.receivables ?? [];
   const payables = company?.payables ?? [];
 
-  const ownReceivables = receivables.filter(r => r.payer_type === 'company' || r.payer_type == null);
+  const ownReceivables = receivables.filter(r => r.stakeholder === 'COMPANY' || r.stakeholder == null);
 
-  const ownPayables = payables.filter(p => p.payer_type === 'company' || p.payer_type == null);
+  const ownPayables = payables.filter(p => p.stakeholder === 'COMPANY' || p.stakeholder == null);
 
   const menuRec = recMenu ? receivables.find(r => r.id === recMenu.id) ?? null : null;
   const menuPay = payMenu ? payables.find(p => p.id === payMenu.id) ?? null : null;
@@ -377,17 +385,39 @@ export default function CompanyDetail() {
   });
 
   const bulkDeleteRecMut = useMutation({
-    mutationFn: (ids: number[]) => Promise.all(ids.map(id => deleteReceivable(id))),
+    mutationFn: (ids: number[]) => bulkDeleteReceivables(ids),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['company', companyId] }); qc.invalidateQueries({ queryKey: ['receivables'] }); setSelectedRec(new Set()); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const bulkDeletePayMut = useMutation({
-    mutationFn: (ids: number[]) => Promise.all(ids.map(id => deletePayable(id))),
+    mutationFn: (ids: number[]) => bulkDeletePayables(ids),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['company', companyId] }); qc.invalidateQueries({ queryKey: ['payables'] }); setSelectedPay(new Set()); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
 
-  if (isLoading) return <div className="p-8 text-[13px] text-ink-3">Carregando…</div>;
+  if (isLoading) return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <Skeleton.Block className="h-[13px] w-14 mb-1" />
+          <Skeleton.Title width="w-52" />
+          <Skeleton.Text width="w-64" />
+        </div>
+        <Skeleton.Block className="h-8 w-20 rounded-lg mt-6" />
+      </div>
+      <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-6">
+        <div className="grid grid-cols-4 gap-3">
+          {[0, 1, 2, 3].map(i => <Skeleton.Card key={i} />)}
+        </div>
+        <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+          <div className="px-3 py-2.5 border-b border-line"><Skeleton.Text width="w-32" /></div>
+          <table className="w-full border-collapse">
+            <tbody><Skeleton.TableRows cols={7} rows={5} /></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
   if (!company) return <div className="p-8 text-[13px] text-ink-3">Empresa não encontrada.</div>;
 
   const TABS = [
@@ -398,7 +428,7 @@ export default function CompanyDetail() {
   const totalRecebido = ownReceivables.reduce((s, r) => s + Number(r.amount_received), 0);
   const totalAberto = ownReceivables.reduce((s, r) => s + Math.max(0, Number(r.total_amount) - Number(r.amount_received)), 0);
   const totalPago = ownPayables.reduce((s, p) => s + Number(p.amount_paid), 0);
-  const totalAPagar = ownPayables.reduce((s, p) => s + Math.max(0, Number(p.amount) - Number(p.amount_paid)), 0);
+  const totalAPagar = ownPayables.reduce((s, p) => s + Math.max(0, Number(p.total_amount) - Number(p.amount_paid)), 0);
 
   function filterDate<T>(items: T[], key: keyof T): T[] {
     if (!dateFrom && !dateTo) return items;
@@ -447,23 +477,12 @@ export default function CompanyDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 mt-6">
-          <button className={btnCancel} onClick={() => setEditModal(true)}><Edit size={14} /> Editar</button>
+          <Button variant="default" onClick={() => setEditModal(true)}><Edit size={14} /> Editar</Button>
         </div>
       </div>
 
       <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-6">
-        <div className="flex items-center gap-3 justify-end">
-          <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Criação</span>
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">de</span>
-            <DateInput value={pendingFrom} onChange={setPendingFrom} />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Até</span>
-            <DateInput value={pendingTo} onChange={setPendingTo} />
-          </div>
-          <button className={btnPrimary} onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); }}>Aplicar</button>
-        </div>
+        <DateRangeFilter label="Criação" onApply={(from, to) => { setDateFrom(from); setDateTo(to); }} />
 
         <div className="grid grid-cols-4 gap-3">
             <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-center gap-3">
@@ -501,7 +520,7 @@ export default function CompanyDetail() {
             </div>
             <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-center gap-3">
               <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-warn-soft text-warn">
-                <Clock size={18} />
+                <Hourglass size={18} />
               </div>
               <div className="flex flex-col gap-0.5 min-w-0 w-full">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3">A pagar</div>
@@ -526,10 +545,10 @@ export default function CompanyDetail() {
             </div>
             <span className="flex-1" />
             {tab === 'receivables' && (
-              <button className={btnPrimary} onClick={() => setNewRecModal(true)}><Plus size={14} /> Novo título a receber</button>
+              <Button variant="primary" onClick={() => setNewRecModal(true)}><Plus size={14} /> Novo título a receber</Button>
             )}
             {tab === 'payables' && (
-              <button className={btnPrimary} onClick={() => setNewPayModal(true)}><Plus size={14} /> Novo título a pagar</button>
+              <Button variant="primary" onClick={() => setNewPayModal(true)}><Plus size={14} /> Novo título a pagar</Button>
             )}
           </div>
 
@@ -569,7 +588,7 @@ export default function CompanyDetail() {
                           <td className={`${tdCls} text-right font-mono`}>{Number(r.amount_received) > 0 ? `R$ ${formatBRL(r.amount_received)}` : '—'}</td>
                           <td className={tdCls}><Badge variant={(STATUS_BADGE[st] ?? 'default') as BadgeVariant}>{STATUS_LABEL[st]}</Badge></td>
                           <td className={tdCls} onClick={e => e.stopPropagation()}>
-                            <button className={iconBtn} onClick={e => { e.stopPropagation(); openMenu(setRecMenu, r.id, e); }}><MoreHorizontal size={15} /></button>
+                            <Button variant="icon" onClick={e => { e.stopPropagation(); openMenu(setRecMenu, r.id, e); }}><MoreHorizontal size={15} /></Button>
                           </td>
                         </tr>
                       );
@@ -611,12 +630,12 @@ export default function CompanyDetail() {
                           <div className="font-medium">{p.title}</div>
                           {p.product && <div className="text-[11.5px] text-ink-3 mt-0.5">{p.product}</div>}
                         </td>
-                        <td className={`${tdCls} font-mono text-[12px]`}>{p.due_date ? formatDate(p.due_date) : '—'}</td>
-                        <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(p.amount)}</td>
+                        <td className={`${tdCls} font-mono text-[12px]`}>{p.expiration_date ? formatDate(p.expiration_date) : '—'}</td>
+                        <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(p.total_amount)}</td>
                         <td className={`${tdCls} text-right font-mono`}>{Number(p.amount_paid) > 0 ? `R$ ${formatBRL(p.amount_paid)}` : '—'}</td>
-                        <td className={tdCls}><Badge variant={(P_STATUS_BADGE[p.status] ?? 'default') as BadgeVariant}>{P_STATUS_LABEL[p.status] ?? p.status}</Badge></td>
+                        <td className={tdCls}><Badge variant={STATUS_BADGE[payableStatus(p)] as BadgeVariant}>{PAYABLE_STATUS_LABEL[payableStatus(p)]}</Badge></td>
                         <td className={tdCls} onClick={e => e.stopPropagation()}>
-                          <button className={iconBtn} onClick={e => { e.stopPropagation(); openMenu(setPayMenu, p.id, e); }}><MoreHorizontal size={15} /></button>
+                          <Button variant="icon" onClick={e => { e.stopPropagation(); openMenu(setPayMenu, p.id, e); }}><MoreHorizontal size={15} /></Button>
                         </td>
                       </tr>
                     ))}
@@ -633,20 +652,20 @@ export default function CompanyDetail() {
       {recMenu && menuRec && (
         <RowMenu top={recMenu.top} right={recMenu.right} onClose={() => setRecMenu(null)}>
           {receivableStatus(menuRec) !== 'paid' && (
-            <button className={rowMenuBtn} onClick={() => { setRecMenu(null); setSettleRec(menuRec); }}><Check size={14} /> Receber</button>
+            <RowMenuItem icon={<Check size={14} />} onClick={() => { setRecMenu(null); setSettleRec(menuRec); }}>Receber</RowMenuItem>
           )}
           <RowMenuSep />
-          <button className={rowMenuBtnDanger} onClick={() => deleteRecMut.mutate(menuRec.id)}><Trash2 size={14} /> Remover</button>
+          <RowMenuDangerItem icon={<Trash2 size={14} />} onClick={() => deleteRecMut.mutate(menuRec.id)}>Remover</RowMenuDangerItem>
         </RowMenu>
       )}
 
       {payMenu && menuPay && (
         <RowMenu top={payMenu.top} right={payMenu.right} onClose={() => setPayMenu(null)}>
-          {menuPay.status !== 'closed' && (
-            <button className={rowMenuBtn} onClick={() => { setPayMenu(null); setPayPayable(menuPay); }}><Check size={14} /> Pagar</button>
+          {menuPay.status !== 'PAID' && (
+            <RowMenuItem icon={<Check size={14} />} onClick={() => { setPayMenu(null); setPayPayable(menuPay); }}>Pagar</RowMenuItem>
           )}
           <RowMenuSep />
-          <button className={rowMenuBtnDanger} onClick={() => deletePayMut.mutate(menuPay.id)}><Trash2 size={14} /> Remover</button>
+          <RowMenuDangerItem icon={<Trash2 size={14} />} onClick={() => deletePayMut.mutate(menuPay.id)}>Remover</RowMenuDangerItem>
         </RowMenu>
       )}
 

@@ -4,7 +4,7 @@ export interface UserPayload {
   name: string;
   email: string;
   password?: string;
-  role: 'ADMIN' | 'EMPLOYEE';
+  role: 'ADMIN' | 'USER';
   permissions?: string[];
 }
 
@@ -12,14 +12,23 @@ export interface UserRecord {
   id: number;
   name: string;
   email: string;
-  role: 'ADMIN' | 'EMPLOYEE';
+  role: 'ADMIN' | 'USER';
   permissions: string[];
   created_at: string;
   updated_at: string;
 }
 
-export const getUsers = () =>
-  client.get<UserRecord[]>('/users').then((r) => r.data);
+export interface GetUsersParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  role?: 'ADMIN' | 'USER';
+  date_from?: string;
+  date_to?: string;
+}
+
+export const getUsers = (params: GetUsersParams = {}) =>
+  client.get<{ data: UserRecord[]; total: number; page: number; limit: number; totalPages: number }>('/users', { params }).then((r) => r.data);
 
 export const createUser = (data: UserPayload) =>
   client.post<UserRecord>('/users', data).then((r) => r.data);

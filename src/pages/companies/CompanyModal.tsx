@@ -1,7 +1,23 @@
 import { useState } from 'react';
-import { X, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 import type { Company } from '../../types';
 import { maskCNPJ, maskPhone, validateCNPJ } from '../../utils/masks';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+import Modal from '../../components/ui/Modal';
+
+function FieldError({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return <span className="text-[11px] text-danger">{msg}</span>;
+}
+
+function inputCls(hasError: boolean) {
+  return hasError ? 'border-danger focus:border-danger focus:shadow-[0_0_0_3px_color-mix(in_srgb,var(--danger)_15%,transparent)]' : '';
+}
+
+function validateEmail(v: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
 
 export function CompanyModal({ company, onClose, onSave }: {
   company?: Company;
@@ -14,41 +30,129 @@ export function CompanyModal({ company, onClose, onSave }: {
     email: company?.email ?? '',
     phone: company?.phone ?? '',
   });
-  const cnpjFilled = form.cnpj.replace(/\D/g, '').length === 14;
-  const cnpjValid = !cnpjFilled || validateCNPJ(form.cnpj);
+
+  const [errors, setErrors] = useState<{ name?: string; cnpj?: string; email?: string; phone?: string }>({});
+  const [touched, setTouched] = useState<{ cnpj?: boolean; email?: boolean; phone?: boolean }>({});
+
+  const cnpjDigits = form.cnpj.replace(/\D/g, '');
+  const cnpjFilled = cnpjDigits.length === 14;
+  const cnpjInvalid = cnpjFilled && !validateCNPJ(form.cnpj);
+
+  function touch(field: 'cnpj' | 'email' | 'phone') {
+    setTouched(t => ({ ...t, [field]: true }));
+  }
+
+  function validate() {
+    const e: typeof errors = {};
+    if (!form.name.trim()) e.name = 'Razão social é obrigatória.';
+    if (!cnpjDigits) {
+      e.cnpj = 'CNPJ é obrigatório.';
+    } else if (!cnpjFilled) {
+      e.cnpj = 'CNPJ incompleto.';
+    } else if (cnpjInvalid) {
+      e.cnpj = 'CNPJ inválido.';
+    }
+    if (!form.email.trim()) {
+      e.email = 'E-mail é obrigatório.';
+    } else if (!validateEmail(form.email)) {
+      e.email = 'E-mail inválido.';
+    }
+    if (!form.phone.trim()) e.phone = 'Telefone é obrigatório.';
+    return e;
+  }
+
+  function handleSave() {
+    setTouched({ cnpj: true, email: true, phone: true });
+    const e = validate();
+    setErrors(e);
+    if (Object.keys(e).length > 0) return;
+    onSave({
+      name: form.name.trim(),
+      cnpj: form.cnpj,
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+    });
+  }
+
+  const showCnpjError = errors.cnpj || (touched.cnpj && cnpjInvalid);
+  const showEmailError = errors.email || (touched.email && form.email && !validateEmail(form.email));
+
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-bg-elev border border-line rounded-[10px] w-full max-w-[480px] shadow-[var(--shadow)] flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
-        <div className="flex items-start justify-between px-[18px] pt-[18px] pb-4 border-b border-line gap-3">
-          <h3 className="text-[15px] font-semibold m-0">{company ? 'Editar empresa' : 'Nova empresa'}</h3>
-          <button className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={onClose}><X size={16} /></button>
+    <Modal onClose={onClose} maxWidth={480}>
+      <Modal.Header title={company ? 'Editar empresa' : 'Nova empresa'} onClose={onClose} />
+
+      <Modal.Body>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[12px] font-medium text-ink-2">
+            Razão social / Nome <span className="text-danger">*</span>
+          </label>
+          <Input
+            placeholder="Razão Social Ltda."
+            value={form.name}
+            className={inputCls(!!errors.name)}
+            onChange={e => { setForm(f => ({ ...f, name: e.target.value })); setErrors(v => ({ ...v, name: undefined })); }}
+          />
+          <FieldError msg={errors.name} />
         </div>
-        <div className="p-[18px] overflow-y-auto flex-1 flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-medium text-ink-2">Razão social / Nome</label>
-            <input className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-medium text-ink-2">CNPJ</label>
-            <input className={`w-full px-2.5 py-[7px] border rounded-md bg-bg-elev text-ink text-[13px] font-mono outline-none focus:shadow-[0_0_0_3px_var(--focus)] ${cnpjFilled && !cnpjValid ? 'border-danger focus:border-danger' : 'border-line focus:border-accent'}`} value={form.cnpj} onChange={e => setForm(f => ({ ...f, cnpj: maskCNPJ(e.target.value) }))} />
-            {cnpjFilled && !cnpjValid && <span className="text-[11px] text-danger">CNPJ inválido</span>}
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-medium text-ink-2">E-mail</label>
-            <input className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]" type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-medium text-ink-2">Telefone</label>
-            <input className="w-full px-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-ink text-[13px] outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)]" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: maskPhone(e.target.value) }))} />
-          </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[12px] font-medium text-ink-2">
+            CNPJ <span className="text-danger">*</span>
+          </label>
+          <Input
+            className={`font-mono ${inputCls(!!showCnpjError)}`}
+            placeholder="00.000.000/0000-00"
+            value={form.cnpj}
+            onChange={e => { setForm(f => ({ ...f, cnpj: maskCNPJ(e.target.value) })); setErrors(v => ({ ...v, cnpj: undefined })); }}
+            onBlur={() => touch('cnpj')}
+          />
+          <FieldError msg={
+            errors.cnpj
+              ? errors.cnpj
+              : touched.cnpj && cnpjInvalid
+                ? 'CNPJ inválido.'
+                : undefined
+          } />
         </div>
-        <div className="flex items-center justify-end gap-2 px-[18px] py-3.5 border-t border-line">
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink" onClick={onClose}>Cancelar</button>
-          <button className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90 disabled:opacity-60" disabled={!form.name.trim() || (cnpjFilled && !cnpjValid)} onClick={() => onSave({ name: form.name, cnpj: form.cnpj || undefined, email: form.email || undefined, phone: form.phone || undefined })}>
-            <Check size={14} /> {company ? 'Salvar' : 'Cadastrar'}
-          </button>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[12px] font-medium text-ink-2">E-mail <span className="text-danger">*</span></label>
+          <Input
+            type="email"
+            placeholder="contato@empresa.com.br"
+            className={inputCls(!!showEmailError)}
+            value={form.email}
+            onChange={e => { setForm(f => ({ ...f, email: e.target.value })); setErrors(v => ({ ...v, email: undefined })); }}
+            onBlur={() => touch('email')}
+          />
+          <FieldError msg={
+            errors.email
+              ? errors.email
+              : touched.email && form.email && !validateEmail(form.email)
+                ? 'E-mail inválido.'
+                : undefined
+          } />
         </div>
-      </div>
-    </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[12px] font-medium text-ink-2">Telefone <span className="text-danger">*</span></label>
+          <Input
+            className={inputCls(!!errors.phone)}
+            placeholder="(00) 00000-0000"
+            value={form.phone}
+            onChange={e => { setForm(f => ({ ...f, phone: maskPhone(e.target.value) })); setErrors(v => ({ ...v, phone: undefined })); }}
+            onBlur={() => touch('phone')}
+          />
+          <FieldError msg={errors.phone} />
+        </div>
+      </Modal.Body>
+
+      <Modal.Footer justify="end">
+        <Button variant="default" onClick={onClose}>Cancelar</Button>
+        <Button variant="primary" onClick={handleSave}>
+          <Check size={14} /> {company ? 'Salvar' : 'Cadastrar'}
+        </Button>
+      </Modal.Footer>
+    </Modal>
   );
 }

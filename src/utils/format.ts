@@ -33,11 +33,10 @@ export function isOverdue(expirationDate: string | null | undefined): boolean {
   return new Date(expirationDate) < new Date(new Date().toDateString());
 }
 
-// Compute display status for Receivable (backend only stores 0/1)
 export type ReceivableStatus = 'open' | 'partial' | 'paid' | 'overdue';
-export function receivableStatus(r: { status: number; amount_received: number; total_amount: number; expiration_date?: string | null }): ReceivableStatus {
-  if (r.status === 1) return 'paid';
-  if (Number(r.amount_received) > 0) return 'partial';
+export function receivableStatus(r: { status: string; amount_received: number; total_amount: number; expiration_date?: string | null }): ReceivableStatus {
+  if (r.status === 'PAID') return 'paid';
+  if (r.status === 'PARTIAL' || Number(r.amount_received) > 0) return 'partial';
   if (isOverdue(r.expiration_date)) return 'overdue';
   return 'open';
 }
@@ -70,4 +69,30 @@ export const BILL_STATUS_BADGE: Record<BillStatus, 'success' | 'warn' | 'danger'
   pending_cnab: 'accent',
   paid:         'success',
   cancelled:    'danger',
+};
+
+export function payableStatus(p: { status: string; amount_paid: number; total_amount: number; expiration_date?: string | null }): ReceivableStatus {
+  if (p.status === 'PAID') return 'paid';
+  if (p.status === 'PARTIAL' || Number(p.amount_paid) > 0) return 'partial';
+  if (isOverdue(p.expiration_date)) return 'overdue';
+  return 'open';
+}
+
+export const PAYABLE_STATUS_LABEL: Record<ReceivableStatus, string> = {
+  open:    'A pagar',
+  partial: 'Parcial',
+  paid:    'Pago',
+  overdue: 'Vencido',
+};
+
+export type UserRole = 'ADMIN' | 'USER';
+
+export const USER_ROLE_LABEL: Record<UserRole, string> = {
+  ADMIN: 'Administrador',
+  USER:  'Usuário',
+};
+
+export const USER_ROLE_BADGE: Record<UserRole, 'accent' | 'default'> = {
+  ADMIN: 'accent',
+  USER:  'default',
 };

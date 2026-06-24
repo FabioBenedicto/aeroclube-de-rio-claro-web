@@ -2,20 +2,23 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, MoreHorizontal, Edit, Eye, Trash2 } from 'lucide-react';
-import DateInput from '../../components/DateInput';
 import Checkbox from '../../components/ui/Checkbox';
-import { getPlanes, createPlane, updatePlane, deletePlane } from '../../api/planes';
+import { getPlanes, createPlane, updatePlane, deletePlane, bulkDeletePlanes } from '../../api/planes';
 import { getSettings } from '../../api/settings';
 import type { Plane } from '../../types';
 import PlaneModal from './PlaneModal';
-import RowMenu, { RowMenuSep } from '../../components/RowMenu';
+import RowMenu, { RowMenuSep, RowMenuItem, RowMenuDangerItem } from '../../components/RowMenu';
 import Pagination from '../../components/Pagination';
 import { useAuth } from '../../contexts/AuthContext';
-import { PERM } from '../../utils/permissions';
+import { PERMISSIONS } from '../../utils/permissions';
 import { toast, extractErrorMessage } from '../../utils/toast';
 import Table, { type TableColumn } from '../../components/ui/Table';
 import PageHeader from '../../components/ui/PageHeader';
 import Button from '../../components/ui/Button';
+import Chip from '../../components/ui/Chip';
+import Skeleton from '../../components/ui/Skeleton';
+import DateRangeFilter from '../../components/DateRangeFilter';
+import SearchInput from '../../components/ui/SearchInput';
 
 type MenuState = { id: number; top: number; right: number };
 
@@ -26,8 +29,6 @@ export default function Planes() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [pendingFrom, setPendingFrom] = useState('');
-  const [pendingTo, setPendingTo] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [typeTab, setTypeTab] = useState<'all' | 'airplane' | 'glider'>('all');
@@ -39,19 +40,19 @@ export default function Planes() {
 
   useEffect(() => { setPage(1); }, [debouncedSearch, dateFrom, dateTo, typeTab]);
 
-  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
+  const { data: settings, isLoading: settingsLoading, isError: settingsError } = useQuery({ queryKey: ['settings'], queryFn: getSettings });
 
-  const aircraftTypeFilter = typeTab === 'all' ? undefined : typeTab;
+  const aircraftTypeFilter = typeTab === 'all' ? undefined : typeTab.toUpperCase();
   const { data, isLoading } = useQuery({ queryKey: ['planes', debouncedSearch, dateFrom, dateTo, page, typeTab], queryFn: () => getPlanes(page, 20, dateFrom || undefined, dateTo || undefined, debouncedSearch || undefined, aircraftTypeFilter) });
   const planes = data?.data ?? [];
   const [menuState, setMenuState] = useState<MenuState | null>(null);
   const [modal, setModal] = useState<{ mode: 'new' | 'edit'; plane?: Plane } | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
-  const [gliderTooltip, setGliderTooltip] = useState<{ top: number; right: number } | null>(null);
+  const [gliderTooltip, setGliderTooltip] = useState<{ top: number; left: number } | null>(null);
 
   const deleteMut = useMutation({ mutationFn: deletePlane, onSuccess: () => qc.invalidateQueries({ queryKey: ['planes'] }), onError: (e: unknown) => toast.error(extractErrorMessage(e)) });
   const bulkDeleteMut = useMutation({
-    mutationFn: (ids: number[]) => Promise.all(ids.map(id => deletePlane(id))),
+    mutationFn: (ids: number[]) => bulkDeletePlanes(ids),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['planes'] }); setSelected(new Set()); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
@@ -92,12 +93,17 @@ export default function Planes() {
       render: row => row.model ?? '—',
     },
     {
-      key: 'aircraft_type',
+      key: 'type',
       label: 'Tipo',
-      render: row => (
-        <span className={`inline-block px-1.5 py-0.5 text-[11px] font-medium rounded border leading-none ${row.aircraft_type === 'glider' ? 'bg-bg-sunk text-ink-3 border-line' : 'bg-accent/8 text-accent border-accent/20'}`}>
-          {row.aircraft_type === 'glider' ? 'Planador' : 'Avião'}
+      render: row => row.type === 'GLIDER' ? (
+        <span
+          onMouseEnter={e => { const r = e.currentTarget.getBoundingClientRect(); setGliderTooltip({ top: r.top, left: r.left }); }}
+          onMouseLeave={() => setGliderTooltip(null)}
+        >
+          <Chip variant="default">Planador</Chip>
         </span>
+      ) : (
+        <Chip variant="default">Avião</Chip>
       ),
     },
     {
@@ -105,10 +111,10 @@ export default function Planes() {
       label: 'Valor/h',
       headerClassName: 'text-right',
       cellClassName: 'text-right font-mono',
-      render: row => row.aircraft_type === 'glider' ? (
+      render: row => row.type === 'GLIDER' ? (
         <span
           className="text-ink-3 text-[12px] underline decoration-dashed underline-offset-2 cursor-default"
-          onMouseEnter={e => { const r = e.currentTarget.getBoundingClientRect(); setGliderTooltip({ top: r.top, right: window.innerWidth - r.right }); }}
+          onMouseEnter={e => { const r = e.currentTarget.getBoundingClientRect(); setGliderTooltip({ top: r.top, left: r.left }); }}
           onMouseLeave={() => setGliderTooltip(null)}
         >
           Regra de cobrança
@@ -138,7 +144,7 @@ export default function Planes() {
       <PageHeader
         title="Aeronaves"
         description="Frota do aeroclube"
-        action={can(PERM.PLANES.CREATE) ? (
+        action={can(PERMISSIONS.AIRCRAFT.CREATE) ? (
           <Button variant="primary" onClick={() => setModal({ mode: 'new' })}>
             <Plus size={14} /> Nova aeronave
           </Button>
@@ -146,93 +152,81 @@ export default function Planes() {
       />
 
       <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-4">
-      <div className="flex items-center gap-3 justify-end">
-        <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Criação</span>
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">de</span>
-          <DateInput value={pendingFrom} onChange={setPendingFrom} />
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Até</span>
-          <DateInput value={pendingTo} onChange={setPendingTo} />
-        </div>
-        <Button variant="primary" onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); setPage(1); }}>Aplicar</Button>
-      </div>
+        <DateRangeFilter label="Criação" onApply={(from, to) => { setDateFrom(from); setDateTo(to); setPage(1); }} />
 
-      <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-line flex-wrap">
-          <div className="flex items-center">
-            <div className="px-3.5 py-2 flex items-center">
-              <Checkbox checked={allSelected} onChange={toggleAll} />
+        <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+          <div className="flex items-center gap-2 px-3 py-2.5 border-b border-line flex-wrap">
+            <div className="flex items-center">
+              <div className="px-3.5 py-2 flex items-center">
+                <Checkbox checked={allSelected} onChange={toggleAll} />
+              </div>
+              {([['all', 'Todos'], ['airplane', 'Aviões'], ['glider', 'Planadores']] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setTypeTab(val)}
+                  className="px-3.5 py-2 text-[13px] font-medium cursor-pointer bg-transparent border-0 border-b-2 whitespace-nowrap"
+                  style={{ color: typeTab === val ? 'var(--ink)' : 'var(--ink-3)', borderBottomColor: typeTab === val ? 'var(--accent)' : 'transparent', marginBottom: -1 }}
+                >
+                  {label}
+                </button>
+              ))}
             </div>
-            {([['all', 'Todos'], ['airplane', 'Aviões'], ['glider', 'Planadores']] as const).map(([val, label]) => (
-              <button
-                key={val}
-                onClick={() => setTypeTab(val)}
-                className="px-3.5 py-2 text-[13px] font-medium cursor-pointer bg-transparent border-0 border-b-2 whitespace-nowrap"
-                style={{ color: typeTab === val ? 'var(--ink)' : 'var(--ink-3)', borderBottomColor: typeTab === val ? 'var(--accent)' : 'transparent', marginBottom: -1 }}
-              >
-                {label}
-              </button>
-            ))}
+            <div className="flex-1" />
+            <SearchInput value={search} onChange={setSearch} placeholder="Buscar por matrícula ou modelo" minWidth={265} />
           </div>
-          <div className="flex-1" />
-          <div className="relative flex items-center">
-            <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-3 pointer-events-none" width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input
-              className="pl-[30px] pr-2.5 py-[7px] border border-line rounded-md bg-bg-elev text-[13px] text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] min-w-[265px]"
-              placeholder="Buscar por matrícula ou modelo"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
-          </div>
+
+          {selected.size > 0 && (
+            <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
+              <span className="text-[13px] font-medium text-accent-ink">{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
+              <span className="flex-1" />
+              {can(PERMISSIONS.AIRCRAFT.DELETE) && (
+                <Button variant="danger" onClick={() => bulkDeleteMut.mutate([...selected])}>
+                  <Trash2 size={14} /> Remover selecionados
+                </Button>
+              )}
+            </div>
+          )}
+
+          <Table
+            columns={columns}
+            data={planes}
+            keyField="id"
+            onRowClick={p => navigate(`/planes/${p.id}`)}
+            emptyMessage="Nenhuma aeronave encontrada."
+            isLoading={isLoading}
+          />
+          <Pagination page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} limit={20} onChange={setPage} />
         </div>
-
-        {selected.size > 0 && (
-          <div className="flex items-center gap-2 px-3.5 py-2 bg-accent-soft border-b border-line">
-            <span className="text-[13px] font-medium text-accent-ink">{selected.size} selecionado{selected.size !== 1 ? 's' : ''}</span>
-            <span className="flex-1" />
-            {can(PERM.PLANES.DELETE) && (
-              <Button variant="danger" onClick={() => bulkDeleteMut.mutate([...selected])}>
-                <Trash2 size={14} /> Remover selecionados
-              </Button>
-            )}
-          </div>
-        )}
-
-        <Table
-          columns={columns}
-          data={planes}
-          keyField="id"
-          onRowClick={p => navigate(`/planes/${p.id}`)}
-          emptyMessage="Nenhuma aeronave encontrada."
-          isLoading={isLoading}
-        />
-        <Pagination page={page} totalPages={data?.totalPages ?? 1} total={data?.total ?? 0} limit={20} onChange={setPage} />
       </div>
 
-      </div>
-
-      {gliderTooltip && settings && (
+      {gliderTooltip && (
         <div
           className="fixed z-50 w-56 rounded-lg border border-line bg-bg-elev shadow-[var(--shadow)] px-3 py-2.5 pointer-events-none"
-          style={{ top: gliderTooltip.top - 8, right: gliderTooltip.right, transform: 'translateY(-100%)' }}
+          style={{ top: gliderTooltip.top - 8, left: gliderTooltip.left, transform: 'translateY(-100%)' }}
         >
           <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-2">Cobrança do planador</div>
-          <div className="text-[12px] text-ink">
-            <span className="text-ink-3">Franquia </span>{settings.glider_initial_minutes} min → <strong>R$ {Number(settings.glider_initial_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-          </div>
-          <div className="text-[12px] text-ink mt-1">
-            <span className="text-ink-3">Excedente </span>R$ {Number(settings.glider_minute_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<span className="text-ink-3">/min</span>
-          </div>
+          {settingsLoading ? (
+            <div className="flex flex-col gap-2"><Skeleton.Text width="w-full" /><Skeleton.Text width="w-4/5" /></div>
+          ) : settingsError || !settings ? (
+            <div className="text-[12px] text-ink-3">Configure em <strong>Configurações → Planador</strong></div>
+          ) : (
+            <>
+              <div className="text-[12px] text-ink">
+                <span className="text-ink-3">Franquia </span>{settings.glider_initial_minutes} min → <strong>R$ {Number(settings.glider_initial_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+              </div>
+              <div className="text-[12px] text-ink mt-1">
+                <span className="text-ink-3">Excedente </span>R$ {Number(settings.glider_minute_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<span className="text-ink-3">/min</span>
+              </div>
+            </>
+          )}
         </div>
       )}
 
       {menuState && menuPlane && (
         <RowMenu top={menuState.top} right={menuState.right} onClose={() => setMenuState(null)}>
-          <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => navigate(`/planes/${menuPlane.id}`)}><Eye size={14} /> Ver detalhes</button>
-          {can(PERM.PLANES.UPDATE) && <button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-ink rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-bg-hover text-left" onClick={() => setModal({ mode: 'edit', plane: menuPlane })}><Edit size={14} /> Editar</button>}
-          {can(PERM.PLANES.DELETE) && <><RowMenuSep /><button className="w-full flex items-center gap-2 px-2.5 py-1.5 text-[13px] text-danger rounded-[5px] cursor-pointer bg-transparent border-0 hover:bg-danger-soft text-left" onClick={() => deleteMut.mutate(menuPlane.id)}><Trash2 size={14} /> Remover</button></>}
+          <RowMenuItem icon={<Eye size={14} />} onClick={() => navigate(`/planes/${menuPlane.id}`)}>Ver detalhes</RowMenuItem>
+          {can(PERMISSIONS.AIRCRAFT.UPDATE) && <RowMenuItem icon={<Edit size={14} />} onClick={() => setModal({ mode: 'edit', plane: menuPlane })}>Editar</RowMenuItem>}
+          {can(PERMISSIONS.AIRCRAFT.DELETE) && <><RowMenuSep /><RowMenuDangerItem icon={<Trash2 size={14} />} onClick={() => deleteMut.mutate(menuPlane.id)}>Remover</RowMenuDangerItem></>}
         </RowMenu>
       )}
 

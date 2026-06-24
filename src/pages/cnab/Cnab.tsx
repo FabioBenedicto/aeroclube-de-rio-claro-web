@@ -1,27 +1,89 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, Upload, X, Plus } from 'lucide-react';
+import { Download, Trash2, MoreHorizontal, X, Plus } from 'lucide-react';
 import {
   getBillsPending,
   generateRemessa,
   downloadRemessa,
-  processRetorno,
+  deleteRemessa,
   getRemessas,
-  getRetornos,
 } from '../../api/cnab';
+import { useNavigate } from 'react-router-dom';
 import { formatBRL, formatDate, BILL_STATUS_LABEL, BILL_STATUS_BADGE } from '../../utils/format';
 import DateInput from '../../components/DateInput';
 import Pagination from '../../components/Pagination';
 import Checkbox from '../../components/ui/Checkbox';
 import Badge from '../../components/ui/Badge';
 import { toast, extractErrorMessage } from '../../utils/toast';
-import type { Bill, CnabRemessa, CnabRetorno } from '../../types';
+import type { Bill, CnabRemessa } from '../../types';
+import Button from '../../components/ui/Button';
+import Skeleton from '../../components/ui/Skeleton';
 
-const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90 disabled:opacity-60';
-const btnSecondary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink disabled:opacity-60';
 const thCls = 'px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
 const thNumCls = 'px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
 const tdCls = 'px-3.5 py-2.5 border-b border-line text-[13px]';
+
+const menuItem = 'flex items-center gap-2 px-3 py-[7px] text-[13px] text-ink hover:bg-bg-hover cursor-pointer w-full text-left border-0 bg-transparent disabled:opacity-40';
+const menuDanger = 'flex items-center gap-2 px-3 py-[7px] text-[13px] text-danger hover:bg-bg-hover cursor-pointer w-full text-left border-0 bg-transparent disabled:opacity-40';
+
+function RemessaRowMenu({ onDownload, onDelete, deletePending }: {
+  onDownload: () => void;
+  onDelete: () => void;
+  deletePending: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  function openMenu() {
+    const r = btnRef.current?.getBoundingClientRect();
+    if (r) setPos({ top: r.bottom + 4, left: r.right - 160 });
+    setOpen(true);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function handler(e: MouseEvent) {
+      if (!menuRef.current?.contains(e.target as Node) && !btnRef.current?.contains(e.target as Node))
+        setOpen(false);
+    }
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink"
+        onClick={openMenu}
+      >
+        <MoreHorizontal size={15} />
+      </button>
+      {open && createPortal(
+        <div
+          ref={menuRef}
+          style={{ position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999 }}
+          className="bg-bg-elev border border-line rounded-lg shadow-lg py-1 min-w-[160px]"
+        >
+          <button className={menuItem} onClick={() => { onDownload(); setOpen(false); }}>
+            <Download size={13} className="text-ink-3 shrink-0" />
+            Baixar
+          </button>
+          <div className="border-t border-line my-1" />
+          <button className={menuDanger} disabled={deletePending} onClick={() => { onDelete(); setOpen(false); }}>
+            <Trash2 size={13} className="shrink-0" />
+            Deletar
+          </button>
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
 
 function GerarRemessaModal({ onClose, onSuccess }: {
   onClose: () => void;
@@ -93,7 +155,7 @@ function GerarRemessaModal({ onClose, onSuccess }: {
             <DateInput value={dueFrom} onChange={setDueFrom} className="w-[120px]" />
             <span className="text-[12px] text-ink-3">até</span>
             <DateInput value={dueTo} onChange={setDueTo} className="w-[120px]" />
-            <button className={btnSecondary} onClick={() => { setAppliedFrom(dueFrom); setAppliedTo(dueTo); setPage(1); setSelected(new Set()); }}>Filtrar</button>
+            <Button variant="default" onClick={() => { setAppliedFrom(dueFrom); setAppliedTo(dueTo); setPage(1); setSelected(new Set()); }}>Filtrar</Button>
             <button className="inline-flex items-center justify-center w-7 h-7 rounded text-ink-3 hover:text-ink hover:bg-bg-hover bg-transparent border-0 cursor-pointer" onClick={onClose}>
               <X size={15} />
             </button>
@@ -112,14 +174,14 @@ function GerarRemessaModal({ onClose, onSuccess }: {
               >
                 <X size={13} />
               </button>
-              <button
-                className={btnPrimary}
+              <Button
+                variant="primary"
                 disabled={remessaMut.isPending}
                 onClick={() => remessaMut.mutate(Array.from(selected))}
               >
                 <Download size={14} />
                 {remessaMut.isPending ? 'Gerando…' : 'Gerar e Baixar'}
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -138,7 +200,7 @@ function GerarRemessaModal({ onClose, onSuccess }: {
             </thead>
             <tbody>
               {isLoading ? (
-                <tr><td colSpan={6} className="px-3.5 py-8 text-center text-ink-3">Carregando…</td></tr>
+                <Skeleton.TableRows cols={6} rows={5} />
               ) : bills.length === 0 ? (
                 <tr><td colSpan={6} className="px-3.5 py-8 text-center text-ink-3">Nenhuma fatura em aberto</td></tr>
               ) : bills.map(bill => (
@@ -174,34 +236,30 @@ function GerarRemessaModal({ onClose, onSuccess }: {
 }
 
 export default function Cnab() {
+  const navigate = useNavigate();
   const qc = useQueryClient();
-  const retornoRef = useRef<HTMLInputElement>(null);
-
   const [showModal, setShowModal] = useState(false);
   const [remessaPage, setRemessaPage] = useState(1);
-  const [retornoPage, setRetornoPage] = useState(1);
-  const [expandedRetorno, setExpandedRetorno] = useState<number | null>(null);
 
   const { data: remessasData, isLoading: remessasLoading } = useQuery({
     queryKey: ['cnab-remessas', remessaPage],
     queryFn: () => getRemessas(remessaPage, 20),
   });
 
-  const { data: retornosData, isLoading: retornosLoading } = useQuery({
-    queryKey: ['cnab-retornos', retornoPage],
-    queryFn: () => getRetornos(retornoPage, 20),
-  });
-
-  const retornoMut = useMutation({
-    mutationFn: processRetorno,
+  const deleteMut = useMutation({
+    mutationFn: deleteRemessa,
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['cnab-retornos'] });
       qc.invalidateQueries({ queryKey: ['cnab-remessas'] });
       qc.invalidateQueries({ queryKey: ['bills'] });
-      toast.success('Retorno processado com sucesso');
+      toast.success('Remessa deletada');
     },
     onError: (e) => toast.error(extractErrorMessage(e)),
   });
+
+  function handleDelete(id: number) {
+    if (!window.confirm('Deletar esta remessa? As faturas voltarão para "Em aberto".')) return;
+    deleteMut.mutate(id);
+  }
 
   function handleDownload(id: number) {
     downloadRemessa(id)
@@ -222,17 +280,15 @@ export default function Cnab() {
     <div className="flex flex-col gap-6">
       <div>
         <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0">Sicoob CNAB 240</h1>
-        <p className="text-[13px] text-ink-3 mt-1 m-0">Remessa e retorno de boletos</p>
+        <p className="text-[13px] text-ink-3 mt-1 m-0">Geração de remessas de boletos</p>
       </div>
 
-      <div className="flex gap-4 items-start">
-      {/* Remessas */}
-      <div className="flex-1 min-w-0 bg-bg-elev border border-line rounded-lg overflow-hidden">
+      <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
           <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Remessas</div>
-          <button className={btnPrimary} onClick={() => setShowModal(true)}>
+          <Button variant="primary" onClick={() => setShowModal(true)}>
             <Plus size={14} /> Gerar Remessa
-          </button>
+          </Button>
         </div>
         <table className="w-full border-collapse text-[13px]">
           <thead>
@@ -246,23 +302,21 @@ export default function Cnab() {
           </thead>
           <tbody>
             {remessasLoading ? (
-              <tr><td colSpan={5} className="px-3.5 py-8 text-center text-ink-3">Carregando…</td></tr>
+              <Skeleton.TableRows cols={5} rows={5} />
             ) : !remessasData?.data.length ? (
               <tr><td colSpan={5} className="px-3.5 py-8 text-center text-ink-3">Nenhuma remessa gerada ainda</td></tr>
             ) : remessasData.data.map((r: CnabRemessa) => (
-              <tr key={r.id} className="border-b border-line hover:bg-bg-hover">
+              <tr key={r.id} className="border-b border-line hover:bg-bg-hover cursor-pointer" onClick={() => navigate(`/cnab/${r.id}`)}>
                 <td className={tdCls + ' text-ink-3 font-mono text-[12px]'}>{formatDate(r.created_at)}</td>
                 <td className={tdCls + ' font-mono text-ink-3'}>#{r.sequence_number}</td>
                 <td className={tdCls}>{r.bill_count}</td>
                 <td className={tdCls + ' text-right font-mono'}>R$ {formatBRL(r.total_amount)}</td>
-                <td className={tdCls}>
-                  <button
-                    className="inline-flex items-center justify-center w-7 h-7 rounded text-ink-3 hover:text-ink hover:bg-bg-hover bg-transparent border-0 cursor-pointer"
-                    onClick={() => handleDownload(r.id)}
-                    title="Baixar arquivo .rem"
-                  >
-                    <Download size={14} />
-                  </button>
+                <td className={tdCls} onClick={e => e.stopPropagation()}>
+                  <RemessaRowMenu
+                    onDownload={() => handleDownload(r.id)}
+                    onDelete={() => handleDelete(r.id)}
+                    deletePending={deleteMut.isPending}
+                  />
                 </td>
               </tr>
             ))}
@@ -271,86 +325,6 @@ export default function Cnab() {
         {remessasData && remessasData.totalPages > 1 && (
           <Pagination page={remessaPage} totalPages={remessasData.totalPages} total={remessasData.total} limit={20} onChange={setRemessaPage} />
         )}
-      </div>
-
-      {/* Retornos */}
-      <div className="flex-1 min-w-0 bg-bg-elev border border-line rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.08em] text-ink-3">Retornos</div>
-          <button
-            className={btnSecondary}
-            disabled={retornoMut.isPending}
-            onClick={() => retornoRef.current?.click()}
-          >
-            <Upload size={14} />
-            {retornoMut.isPending ? 'Processando…' : 'Importar Retorno'}
-          </button>
-        </div>
-        <input
-          ref={retornoRef}
-          type="file"
-          accept=".ret,.txt"
-          className="hidden"
-          onChange={e => {
-            const file = e.target.files?.[0];
-            if (file) retornoMut.mutate(file);
-            e.target.value = '';
-          }}
-        />
-        <table className="w-full border-collapse text-[13px]">
-          <thead>
-            <tr>
-              <th className={thCls}>Data</th>
-              <th className={thCls}>Liquidadas</th>
-              <th className={thCls}>Rejeitadas</th>
-              <th className={thCls}>Erros</th>
-            </tr>
-          </thead>
-          <tbody>
-            {retornosLoading ? (
-              <tr><td colSpan={4} className="px-3.5 py-8 text-center text-ink-3">Carregando…</td></tr>
-            ) : !retornosData?.data.length ? (
-              <tr><td colSpan={4} className="px-3.5 py-8 text-center text-ink-3">Nenhum retorno importado ainda</td></tr>
-            ) : retornosData.data.map((r: CnabRetorno) => (
-              <React.Fragment key={r.id}>
-                <tr className="border-b border-line hover:bg-bg-hover">
-                  <td className={tdCls + ' text-ink-3 font-mono text-[12px]'}>{formatDate(r.processed_at)}</td>
-                  <td className={tdCls}><Badge variant="success">{r.paid_count}</Badge></td>
-                  <td className={tdCls}>
-                    {r.rejected_count > 0
-                      ? <Badge variant="danger">{r.rejected_count}</Badge>
-                      : <span className="text-ink-3">0</span>}
-                  </td>
-                  <td className={tdCls}>
-                    {r.errors.length > 0 ? (
-                      <button
-                        className="text-[12px] text-danger underline cursor-pointer bg-transparent border-0"
-                        onClick={() => setExpandedRetorno(expandedRetorno === r.id ? null : r.id)}
-                      >
-                        {r.errors.length} erro(s) {expandedRetorno === r.id ? '▲' : '▼'}
-                      </button>
-                    ) : <span className="text-ink-3">0</span>}
-                  </td>
-                </tr>
-                {expandedRetorno === r.id && r.errors.length > 0 && (
-                  <tr className="border-b border-line bg-danger-soft">
-                    <td colSpan={4} className="px-5 py-3">
-                      <div className="flex flex-col gap-1">
-                        {r.errors.map((err, i) => (
-                          <span key={i} className="text-[12px] font-mono text-danger">{err}</span>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            ))}
-          </tbody>
-        </table>
-        {retornosData && retornosData.totalPages > 1 && (
-          <Pagination page={retornoPage} totalPages={retornosData.totalPages} total={retornosData.total} limit={20} onChange={setRetornoPage} />
-        )}
-      </div>
       </div>
 
       {showModal && (

@@ -22,11 +22,12 @@ import Companies from './pages/companies/Companies';
 import CompanyDetail from './pages/companies/CompanyDetail';
 import Settings from './pages/Settings';
 import Peoples from './pages/peoples/Peoples';
-import PersonDetail from './pages/peoples/PersonDetail';
+import PeopleDetail from './pages/peoples/PeopleDetail';
 import Users from './pages/users/Users';
 import Reports from './pages/reports/Reports';
 import Profile from './pages/Profile';
 import Cnab from './pages/cnab/Cnab';
+import RemessaDetail from './pages/cnab/RemessaDetail';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -49,7 +50,7 @@ export default function App() {
                 <Route index element={<Navigate to="/dashboard" replace />} />
                 <Route path="dashboard" element={<Dashboard />} />
                 <Route path="peoples" element={<Peoples />} />
-                <Route path="peoples/:id" element={<PersonDetail />} />
+                <Route path="peoples/:id" element={<PeopleDetail />} />
                 <Route path="companies" element={<Companies />} />
                 <Route path="companies/:id" element={<CompanyDetail />} />
                 <Route path="flights" element={<Flights />} />
@@ -62,6 +63,7 @@ export default function App() {
                 <Route path="invoices" element={<Invoices />} />
                 <Route path="invoices/:id" element={<InvoiceDetail />} />
                 <Route path="cnab" element={<Cnab />} />
+                <Route path="cnab/:id" element={<RemessaDetail />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="settings" element={<Settings />} />

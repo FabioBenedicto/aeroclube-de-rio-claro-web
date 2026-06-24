@@ -6,45 +6,45 @@ import {
 } from 'lucide-react';
 import { cn } from '../utils/cn';
 import Toaster from './Toaster';
-import { PERM } from '../utils/permissions';
+import { PERMISSIONS } from '../utils/permissions';
 
 const NAV = [
-  { group: 'Financial', items: [
+  { group: 'Financeiro', items: [
     { path: '/dashboard',   label: 'Dashboard',   Icon: Home },
-    { path: '/receivables', label: 'Receivables', Icon: ArrowDownLeft, permission: PERM.RECEIVABLES.VIEW },
-    { path: '/payables',    label: 'Payables',    Icon: ArrowUpRight,  permission: PERM.PAYABLES.VIEW },
-    { path: '/invoices',    label: 'Invoices',    Icon: FileText,      permission: PERM.INVOICES.VIEW },
+    { path: '/receivables', label: 'Títulos a receber', Icon: ArrowDownLeft, permission: PERMISSIONS.RECEIVABLES.VIEW },
+    { path: '/payables',    label: 'Títulos a pagar',  Icon: ArrowUpRight,  permission: PERMISSIONS.PAYABLES.VIEW },
+    { path: '/invoices',    label: 'Faturas',     Icon: FileText,      permission: PERMISSIONS.BILLS.VIEW },
     { path: '/cnab',        label: 'CNAB',        Icon: Landmark,      adminOnly: true },
   ]},
-  { group: 'Operations', items: [
-    { path: '/flights',   label: 'Flights',   Icon: Plane,     permission: PERM.FLIGHTS.VIEW },
-    { path: '/planes',    label: 'Aircraft',  Icon: Radar,     permission: PERM.PLANES.VIEW },
-    { path: '/peoples',   label: 'People',    Icon: Users,     permission: PERM.CUSTOMERS.VIEW },
-    { path: '/companies', label: 'Companies', Icon: Building2, permission: PERM.COMPANIES.VIEW },
+  { group: 'Operações', items: [
+    { path: '/flights',   label: 'Voos',      Icon: Plane,     permission: PERMISSIONS.FLIGHTS.VIEW },
+    { path: '/planes',    label: 'Aeronaves', Icon: Radar,     permission: PERMISSIONS.AIRCRAFT.VIEW },
+    { path: '/peoples',   label: 'Pessoas',   Icon: Users,     permission: PERMISSIONS.CUSTOMERS.VIEW },
+    { path: '/companies', label: 'Empresas',  Icon: Building2, permission: PERMISSIONS.COMPANIES.VIEW },
   ]},
-  { group: 'Analytics', items: [
-    { path: '/reports', label: 'Reports', Icon: BarChart2, permission: PERM.REPORTS.VIEW },
+  { group: 'Análises', items: [
+    { path: '/reports', label: 'Relatórios', Icon: BarChart2, permission: PERMISSIONS.REPORTS.VIEW },
   ]},
-  { group: 'System', items: [
-    { path: '/settings', label: 'Settings', Icon: Settings, adminOnly: true },
-    { path: '/users',    label: 'Users',    Icon: UserCog,  adminOnly: true },
+  { group: 'Sistema', items: [
+    { path: '/settings', label: 'Configurações', Icon: Settings, adminOnly: true },
+    { path: '/users',    label: 'Usuários',      Icon: UserCog,  adminOnly: true },
   ]},
 ];
 
 const CRUMB_MAP: Record<string, string[]> = {
-  '/dashboard':   ['Aeroclube', 'Financial',  'Dashboard'],
-  '/receivables': ['Aeroclube', 'Financial',  'Receivables'],
-  '/payables':    ['Aeroclube', 'Financial',  'Payables'],
-  '/invoices':    ['Aeroclube', 'Financial',  'Invoices'],
-  '/cnab':        ['Aeroclube', 'Financial',  'CNAB'],
-  '/flights':     ['Aeroclube', 'Operations', 'Flights'],
-  '/planes':      ['Aeroclube', 'Operations', 'Aircraft'],
-  '/peoples':     ['Aeroclube', 'Operations', 'People'],
-  '/companies':   ['Aeroclube', 'Operations', 'Companies'],
-  '/reports':     ['Aeroclube', 'Analytics',  'Reports'],
-  '/settings':    ['Aeroclube', 'Settings'],
-  '/users':       ['Aeroclube', 'System',     'Users'],
-  '/profile':     ['Aeroclube', 'My Profile'],
+  '/dashboard':   ['Aeroclube', 'Financeiro',  'Dashboard'],
+  '/receivables': ['Aeroclube', 'Financeiro',  'Títulos a receber'],
+  '/payables':    ['Aeroclube', 'Financeiro',  'Títulos a pagar'],
+  '/invoices':    ['Aeroclube', 'Financeiro',  'Faturas'],
+  '/cnab':        ['Aeroclube', 'Financeiro',  'CNAB'],
+  '/flights':     ['Aeroclube', 'Operações',   'Voos'],
+  '/planes':      ['Aeroclube', 'Operações',   'Aeronaves'],
+  '/peoples':     ['Aeroclube', 'Operações',   'Pessoas'],
+  '/companies':   ['Aeroclube', 'Operações',   'Empresas'],
+  '/reports':     ['Aeroclube', 'Análises',    'Relatórios'],
+  '/settings':    ['Aeroclube', 'Configurações'],
+  '/users':       ['Aeroclube', 'Sistema',     'Usuários'],
+  '/profile':     ['Aeroclube', 'Meu Perfil'],
 };
 
 export default function AppShell() {
@@ -67,7 +67,7 @@ export default function AppShell() {
         <div className="flex items-center gap-2.5 px-[18px] py-[18px] pb-4 border-b border-line">
           <div>
             <div className="font-semibold text-[13px] tracking-tight leading-tight">Aeroclube de Rio&nbsp;Claro</div>
-            <div className="text-[10.5px] text-ink-3 tracking-[0.04em] uppercase mt-0.5">Financial System</div>
+            <div className="text-[10.5px] text-ink-3 tracking-[0.04em] uppercase mt-0.5">Sistema Financeiro</div>
           </div>
         </div>
 
@@ -110,19 +110,19 @@ export default function AppShell() {
             <div className="flex-1 min-w-0">
               <div className="text-[12.5px] font-medium overflow-hidden text-ellipsis whitespace-nowrap">{user?.name}</div>
               <div className="text-[10.5px] text-ink-3 uppercase tracking-[0.02em]">
-                {user?.role === 'ADMIN' ? 'Admin' : 'Employee'}
+                {user?.role === 'ADMIN' ? 'Admin' : 'Usuário'}
               </div>
             </div>
             <button
               className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink"
-              title="My profile"
+              title="Meu perfil"
               onClick={() => navigate('/profile')}
             >
               <Pencil size={13} />
             </button>
             <button
               className="inline-flex items-center justify-center w-7 h-7 rounded-[5px] border-0 bg-transparent text-ink-3 cursor-pointer hover:bg-bg-hover hover:text-ink"
-              title="Sign out"
+              title="Sair"
               onClick={handleLogout}
             >
               <LogOut size={14} />

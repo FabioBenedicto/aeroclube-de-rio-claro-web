@@ -2,18 +2,19 @@ import { type HTMLAttributes } from 'react';
 import { cn } from '../../utils/cn';
 
 interface ChipProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: 'aluno' | 'socio' | 'instrutor' | 'funcionario' | 'student' | 'partner' | 'instructor' | 'employee' | 'default';
+  variant?: 'aluno' | 'socio' | 'instrutor' | 'funcionario' | 'student' | 'partner' | 'instructor' | 'employee' | 'airplane' | 'default';
 }
 
 const variantClass: Record<string, string> = {
-  aluno: 'bg-accent-soft text-accent-ink border-transparent',
-  student: 'bg-accent-soft text-accent-ink border-transparent',
-  socio: 'bg-success-soft text-success border-transparent',
-  partner: 'bg-success-soft text-success border-transparent',
-  instrutor: 'bg-warn-soft text-warn border-transparent',
-  instructor: 'bg-warn-soft text-warn border-transparent',
-  funcionario: 'bg-danger-soft text-danger border-transparent',
-  employee: 'bg-danger-soft text-danger border-transparent',
+  aluno: 'bg-bg-sunk text-ink-3 border-line',
+  student: 'bg-bg-sunk text-ink-3 border-line',
+  airplane: 'bg-bg-sunk text-ink-3 border-line',
+  socio: 'bg-bg-sunk text-ink-3 border-line',
+  partner: 'bg-bg-sunk text-ink-3 border-line',
+  instrutor: 'bg-bg-sunk text-ink-3 border-line',
+  instructor: 'bg-bg-sunk text-ink-3 border-line',
+  funcionario: 'bg-bg-sunk text-ink-3 border-line',
+  employee: 'bg-bg-sunk text-ink-3 border-line',
   default: 'bg-bg-sunk text-ink-3 border-line',
 };
 

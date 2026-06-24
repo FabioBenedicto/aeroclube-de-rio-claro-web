@@ -6,6 +6,9 @@ import type { QueryReportPayload } from '../../api/reports';
 import { formatBRL, formatDate } from '../../utils/format';
 import { toast } from '../../utils/toast';
 import Checkbox from '../../components/ui/Checkbox';
+import Button from '../../components/ui/Button';
+import Select from '../../components/ui/Select';
+import Textarea from '../../components/ui/Textarea';
 
 type FieldType = 'string' | 'number' | 'date' | 'enum';
 
@@ -22,40 +25,41 @@ const ENTITY_SCHEMAS: Record<string, FieldDef[]> = {
   receivable: [
     { key: 'id', label: 'ID', type: 'number', groupable: true },
     { key: 'title', label: 'Título', type: 'string', groupable: true },
-    { key: 'product', label: 'Produto', type: 'enum', groupable: true, enumValues: [
-      { value: 'voo', label: 'Voo' }, { value: 'credito', label: 'Crédito' }, { value: 'servico', label: 'Serviço' },
-      { value: 'mensalidade', label: 'Mensalidade' }, { value: 'instrucao', label: 'Instrução' }, { value: 'outro', label: 'Outro' },
-    ]},
+    { key: 'description', label: 'Descrição', type: 'string' },
+    { key: 'receivable_type_name', label: 'Tipo', type: 'string', groupable: true },
     { key: 'total_amount', label: 'Valor total', type: 'number', aggregatable: true },
     { key: 'amount_received', label: 'Valor recebido', type: 'number', aggregatable: true },
     { key: 'status', label: 'Status', type: 'enum', groupable: true, enumValues: [
-      { value: '0', label: 'A receber' }, { value: '1', label: 'Pago' },
+      { value: 'PENDING', label: 'A receber' }, { value: 'PARTIAL', label: 'Parcial' },
+      { value: 'PAID', label: 'Pago' }, { value: 'OVERDUE', label: 'Vencido' },
     ]},
     { key: 'expiration_date', label: 'Vencimento', type: 'date', groupable: true },
     { key: 'created_at', label: 'Criado em', type: 'date', groupable: true },
-    { key: 'payer_type', label: 'Tipo de pagador', type: 'enum', groupable: true, enumValues: [
-      { value: 'customer', label: 'Cliente' }, { value: 'company', label: 'Empresa' }, { value: 'instructor', label: 'Instrutor' },
-      { value: 'partner', label: 'Sócio' }, { value: 'employee', label: 'Funcionário' }, { value: 'none', label: 'Nenhum' },
+    { key: 'stakeholder', label: 'Tipo de pagador', type: 'enum', groupable: true, enumValues: [
+      { value: 'PEOPLE', label: 'Cliente' }, { value: 'COMPANY', label: 'Empresa' }, { value: 'INSTRUCTOR', label: 'Instrutor' },
+      { value: 'PARTNER', label: 'Sócio' }, { value: 'EMPLOYEE', label: 'Funcionário' }, { value: 'NONE', label: 'Nenhum' },
     ]},
-    { key: 'customer_name', label: 'Cliente', type: 'string' },
+    { key: 'person_name', label: 'Cliente', type: 'string' },
     { key: 'company_name', label: 'Empresa', type: 'string' },
   ],
   payable: [
     { key: 'id', label: 'ID', type: 'number', groupable: true },
     { key: 'title', label: 'Título', type: 'string', groupable: true },
-    { key: 'product', label: 'Produto', type: 'string', groupable: true },
-    { key: 'amount', label: 'Valor', type: 'number', aggregatable: true },
+    { key: 'description', label: 'Descrição', type: 'string' },
+    { key: 'payable_type_name', label: 'Tipo', type: 'string', groupable: true },
+    { key: 'total_amount', label: 'Valor', type: 'number', aggregatable: true },
     { key: 'amount_paid', label: 'Valor pago', type: 'number', aggregatable: true },
     { key: 'status', label: 'Status', type: 'enum', groupable: true, enumValues: [
-      { value: 'open', label: 'Em aberto' }, { value: 'partial', label: 'Parcial' }, { value: 'closed', label: 'Pago' },
+      { value: 'PENDING', label: 'Em aberto' }, { value: 'PARTIAL', label: 'Parcial' },
+      { value: 'PAID', label: 'Pago' }, { value: 'OVERDUE', label: 'Vencido' },
     ]},
-    { key: 'due_date', label: 'Vencimento', type: 'date', groupable: true },
+    { key: 'expiration_date', label: 'Vencimento', type: 'date', groupable: true },
     { key: 'created_at', label: 'Criado em', type: 'date', groupable: true },
-    { key: 'payer_type', label: 'Tipo', type: 'enum', groupable: true, enumValues: [
-      { value: 'customer', label: 'Cliente' }, { value: 'company', label: 'Empresa' }, { value: 'instructor', label: 'Instrutor' },
-      { value: 'partner', label: 'Sócio' }, { value: 'employee', label: 'Funcionário' }, { value: 'none', label: 'Nenhum' },
+    { key: 'stakeholder', label: 'Tipo', type: 'enum', groupable: true, enumValues: [
+      { value: 'PEOPLE', label: 'Cliente' }, { value: 'COMPANY', label: 'Empresa' }, { value: 'INSTRUCTOR', label: 'Instrutor' },
+      { value: 'PARTNER', label: 'Sócio' }, { value: 'EMPLOYEE', label: 'Funcionário' }, { value: 'NONE', label: 'Nenhum' },
     ]},
-    { key: 'customer_name', label: 'Cliente', type: 'string' },
+    { key: 'person_name', label: 'Cliente', type: 'string' },
     { key: 'company_name', label: 'Empresa', type: 'string' },
   ],
   flight: [
@@ -67,14 +71,11 @@ const ENTITY_SCHEMAS: Record<string, FieldDef[]> = {
     { key: 'end_date', label: 'Fim', type: 'date' },
     { key: 'total_hours', label: 'Horas', type: 'number', aggregatable: true },
     { key: 'total_amount', label: 'Valor', type: 'number', aggregatable: true },
-    { key: 'double_command', label: 'Duplo Comando', type: 'enum', groupable: true, enumValues: [
-      { value: 'true', label: 'Sim' }, { value: 'false', label: 'Não' },
-    ]},
-    { key: 'customer_name', label: 'Cliente', type: 'string' },
-    { key: 'plane_registration', label: 'Aeronave', type: 'string' },
+    { key: 'pilot_name', label: 'Piloto', type: 'string' },
+    { key: 'aircraft_registration', label: 'Aeronave', type: 'string' },
     { key: 'instructor_name', label: 'Instrutor', type: 'string' },
   ],
-  customer: [
+  people: [
     { key: 'id', label: 'ID', type: 'number', groupable: true },
     { key: 'name', label: 'Nome', type: 'string', groupable: true },
     { key: 'cpf', label: 'CPF', type: 'string', groupable: true },
@@ -86,28 +87,31 @@ const ENTITY_SCHEMAS: Record<string, FieldDef[]> = {
   bill: [
     { key: 'id', label: 'ID', type: 'number', groupable: true },
     { key: 'total_amount', label: 'Valor total', type: 'number', aggregatable: true },
-    { key: 'issue_date', label: 'Emissão', type: 'date', groupable: true },
-    { key: 'due_date', label: 'Vencimento', type: 'date', groupable: true },
-    { key: 'paid_at', label: 'Pago em', type: 'date' },
+    { key: 'expiration_date', label: 'Vencimento', type: 'date', groupable: true },
+    { key: 'payment_date', label: 'Pago em', type: 'date' },
+    { key: 'status', label: 'Status', type: 'enum', groupable: true, enumValues: [
+      { value: 'open', label: 'Em aberto' }, { value: 'pending_cnab', label: 'Pendente CNAB' },
+      { value: 'paid', label: 'Pago' }, { value: 'cancelled', label: 'Cancelado' },
+    ]},
+    { key: 'payment_method', label: 'Forma de pagamento', type: 'string', groupable: true },
     { key: 'created_at', label: 'Criado em', type: 'date', groupable: true },
-    { key: 'customer_name', label: 'Cliente', type: 'string' },
+    { key: 'people_name', label: 'Cliente', type: 'string' },
   ],
   receivablePayment: [
     { key: 'id', label: 'ID', type: 'number', groupable: true },
-    { key: 'amount_received', label: 'Valor recebido', type: 'number', aggregatable: true },
-    { key: 'payment_method', label: 'Forma de pagamento', type: 'string', groupable: true },
+    { key: 'amount', label: 'Valor recebido', type: 'number', aggregatable: true },
+    { key: 'method', label: 'Forma de pagamento', type: 'string', groupable: true },
     { key: 'payment_date', label: 'Data', type: 'date', groupable: true },
     { key: 'receivable_title', label: 'Título', type: 'string' },
-    { key: 'customer_name', label: 'Cliente', type: 'string' },
+    { key: 'person_name', label: 'Cliente', type: 'string' },
   ],
   payablePayment: [
     { key: 'id', label: 'ID', type: 'number', groupable: true },
     { key: 'amount', label: 'Valor pago', type: 'number', aggregatable: true },
     { key: 'method', label: 'Forma de pagamento', type: 'string', groupable: true },
-    { key: 'paid_at', label: 'Data', type: 'date', groupable: true },
-    { key: 'notes', label: 'Observações', type: 'string' },
+    { key: 'payment_date', label: 'Data', type: 'date', groupable: true },
     { key: 'payable_title', label: 'Título', type: 'string' },
-    { key: 'customer_name', label: 'Cliente', type: 'string' },
+    { key: 'person_name', label: 'Cliente', type: 'string' },
   ],
   company: [
     { key: 'id', label: 'ID', type: 'number', groupable: true },
@@ -119,8 +123,8 @@ const ENTITY_SCHEMAS: Record<string, FieldDef[]> = {
   ],
   partner: [
     { key: 'id', label: 'ID', type: 'number', groupable: true },
-    { key: 'customer_name', label: 'Sócio', type: 'string' },
-    { key: 'customer_cpf', label: 'CPF', type: 'string' },
+    { key: 'people_name', label: 'Sócio', type: 'string' },
+    { key: 'people_cpf', label: 'CPF', type: 'string' },
     { key: 'monthly_dues', label: 'Mensalidade', type: 'number', aggregatable: true },
     { key: 'next_due_date', label: 'Próximo vencimento', type: 'date', groupable: true },
     { key: 'last_payment_date', label: 'Último pagamento', type: 'date' },
@@ -131,15 +135,64 @@ const ENTITY_SCHEMAS: Record<string, FieldDef[]> = {
   ],
   instructor: [
     { key: 'id', label: 'ID', type: 'number', groupable: true },
-    { key: 'customer_name', label: 'Nome', type: 'string' },
-    { key: 'customer_cpf', label: 'CPF', type: 'string' },
-    { key: 'customer_email', label: 'E-mail', type: 'string' },
+    { key: 'created_at', label: 'Criado em', type: 'date', groupable: true },
+    { key: 'people_name', label: 'Nome', type: 'string' },
+    { key: 'people_cpf', label: 'CPF', type: 'string' },
+    { key: 'people_email', label: 'E-mail', type: 'string' },
   ],
-  plane: [
+  aircraft: [
     { key: 'id', label: 'ID', type: 'number', groupable: true },
     { key: 'registration', label: 'Matrícula', type: 'string', groupable: true },
     { key: 'model', label: 'Modelo', type: 'string', groupable: true },
+    { key: 'type', label: 'Tipo', type: 'string', groupable: true },
     { key: 'flight_hour_value', label: 'Valor hora/voo', type: 'number', aggregatable: true },
+    { key: 'created_at', label: 'Criado em', type: 'date', groupable: true },
+  ],
+  receivableType: [
+    { key: 'id', label: 'ID', type: 'number', groupable: true },
+    { key: 'name', label: 'Nome', type: 'string', groupable: true },
+    { key: 'created_at', label: 'Criado em', type: 'date', groupable: true },
+  ],
+  payableType: [
+    { key: 'id', label: 'ID', type: 'number', groupable: true },
+    { key: 'name', label: 'Nome', type: 'string', groupable: true },
+    { key: 'created_at', label: 'Criado em', type: 'date', groupable: true },
+  ],
+  address: [
+    { key: 'id', label: 'ID', type: 'number', groupable: true },
+    { key: 'street', label: 'Rua', type: 'string' },
+    { key: 'neighborhood', label: 'Bairro', type: 'string', groupable: true },
+    { key: 'city', label: 'Cidade', type: 'string', groupable: true },
+    { key: 'state', label: 'Estado', type: 'string', groupable: true },
+    { key: 'zip_code', label: 'CEP', type: 'string' },
+    { key: 'people_name', label: 'Pessoa', type: 'string' },
+  ],
+  student: [
+    { key: 'id', label: 'ID', type: 'number', groupable: true },
+    { key: 'created_at', label: 'Criado em', type: 'date', groupable: true },
+    { key: 'people_name', label: 'Nome', type: 'string' },
+    { key: 'people_cpf', label: 'CPF', type: 'string' },
+    { key: 'people_email', label: 'E-mail', type: 'string' },
+  ],
+  employee: [
+    { key: 'id', label: 'ID', type: 'number', groupable: true },
+    { key: 'created_at', label: 'Criado em', type: 'date', groupable: true },
+    { key: 'people_name', label: 'Nome', type: 'string' },
+    { key: 'people_cpf', label: 'CPF', type: 'string' },
+    { key: 'people_email', label: 'E-mail', type: 'string' },
+  ],
+  cnabRemessa: [
+    { key: 'id', label: 'ID', type: 'number', groupable: true },
+    { key: 'sequence_number', label: 'Sequência', type: 'number' },
+    { key: 'bill_count', label: 'Qtd. faturas', type: 'number', aggregatable: true },
+    { key: 'total_amount', label: 'Valor total', type: 'number', aggregatable: true },
+    { key: 'created_at', label: 'Criado em', type: 'date', groupable: true },
+  ],
+  file: [
+    { key: 'id', label: 'ID', type: 'number', groupable: true },
+    { key: 'original_name', label: 'Nome do arquivo', type: 'string' },
+    { key: 'mime_type', label: 'Tipo', type: 'string', groupable: true },
+    { key: 'size', label: 'Tamanho (bytes)', type: 'number', aggregatable: true },
     { key: 'created_at', label: 'Criado em', type: 'date', groupable: true },
   ],
 };
@@ -151,39 +204,53 @@ const ENTITIES = [
   { value: 'payablePayment',    label: 'Pagamentos efetuados' },
   { value: 'bill',              label: 'Faturas' },
   { value: 'flight',            label: 'Voos' },
-  { value: 'customer',          label: 'Pessoas' },
+  { value: 'people',            label: 'Pessoas' },
   { value: 'company',           label: 'Empresas' },
   { value: 'partner',           label: 'Sócios' },
   { value: 'instructor',        label: 'Instrutores' },
-  { value: 'plane',             label: 'Aeronaves' },
+  { value: 'aircraft',          label: 'Aeronaves' },
+  { value: 'receivableType',    label: 'Tipos de recebível' },
+  { value: 'payableType',       label: 'Tipos de pagável' },
+  { value: 'address',           label: 'Endereços' },
+  { value: 'student',           label: 'Alunos' },
+  { value: 'employee',          label: 'Funcionários' },
+  { value: 'cnabRemessa',       label: 'Remessas CNAB' },
+  { value: 'file',              label: 'Arquivos' },
 ];
 
 interface JoinOption { value: string; label: string; entity: string; }
 
 const JOIN_OPTIONS: Record<string, JoinOption[]> = {
   receivable:        [
-    { value: 'customer', label: 'Pessoa',   entity: 'customer' },
+    { value: 'people',   label: 'Pessoa',   entity: 'people'   },
     { value: 'company',  label: 'Empresa',  entity: 'company'  },
-    { value: 'plane',    label: 'Aeronave', entity: 'plane'    },
+    { value: 'aircraft', label: 'Aeronave', entity: 'aircraft' },
     { value: 'flight',   label: 'Voo',      entity: 'flight'   },
   ],
   payable:           [
-    { value: 'customer', label: 'Pessoa',   entity: 'customer' },
+    { value: 'people',   label: 'Pessoa',   entity: 'people'   },
     { value: 'company',  label: 'Empresa',  entity: 'company'  },
-    { value: 'plane',    label: 'Aeronave', entity: 'plane'    },
+    { value: 'aircraft', label: 'Aeronave', entity: 'aircraft' },
   ],
   flight:            [
-    { value: 'customer', label: 'Piloto',   entity: 'customer' },
-    { value: 'plane',    label: 'Aeronave', entity: 'plane'    },
+    { value: 'people',   label: 'Piloto',   entity: 'people'   },
+    { value: 'aircraft', label: 'Aeronave', entity: 'aircraft' },
   ],
-  customer:          [],
-  bill:              [{ value: 'customer', label: 'Pessoa', entity: 'customer' }],
+  people:            [],
+  bill:              [{ value: 'people', label: 'Pessoa', entity: 'people' }],
   receivablePayment: [],
   payablePayment:    [],
   company:           [],
-  partner:           [{ value: 'customer', label: 'Pessoa', entity: 'customer' }],
-  instructor:        [{ value: 'customer', label: 'Pessoa', entity: 'customer' }],
-  plane:             [],
+  partner:           [{ value: 'people', label: 'Pessoa', entity: 'people' }],
+  instructor:        [{ value: 'people', label: 'Pessoa', entity: 'people' }],
+  aircraft:          [],
+  receivableType:    [],
+  payableType:       [],
+  address:           [],
+  student:           [],
+  employee:          [],
+  cnabRemessa:       [],
+  file:              [],
 };
 
 function getJoinedFields(joinKey: string, joinLabel: string, joinEntity: string): FieldDef[] {
@@ -255,11 +322,7 @@ function extractErrorMessage(e: any): string {
   return data.error ?? 'Erro desconhecido';
 }
 
-const inputCls = 'px-2.5 py-[7px] border border-line rounded-md bg-bg text-[13px] text-ink outline-none focus:border-accent focus:shadow-[0_0_0_3px_var(--focus)] transition-[border-color,box-shadow] duration-100 w-full';
-const selectCls = `${inputCls} cursor-pointer`;
 const sectionHdr = 'text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3';
-const btnPrimary = 'inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium bg-accent border border-accent text-white cursor-pointer hover:opacity-90 disabled:opacity-50';
-const btnSecondary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium border border-line bg-bg-elev text-ink-2 cursor-pointer hover:bg-bg-hover hover:text-ink disabled:opacity-50';
 const thCls = 'px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line whitespace-nowrap';
 
 function formatCell(value: any, key: string, schema: FieldDef[], rawMode = false): string {
@@ -453,13 +516,12 @@ export default function Reports() {
                 placeholder="SELECT * FROM ..."
               />
             </div>
-            <button
-              className={`${btnPrimary} w-full`}
+            <Button
               disabled={!canRun || isPending}
               onClick={handleRun}
             >
               <Play size={13} /> {isPending ? 'Executando…' : 'Executar'}
-            </button>
+            </Button>
           </div>
         ) : (
         <div className="flex flex-col gap-3 w-[340px] flex-shrink-0">
@@ -467,9 +529,9 @@ export default function Reports() {
           {/* Entity */}
           <div className="bg-bg-elev border border-line rounded-lg p-4 flex flex-col gap-2.5">
             <div className={sectionHdr}>Fonte de dados</div>
-            <select className={selectCls} value={entity} onChange={e => changeEntity(e.target.value)}>
+            <Select value={entity} onChange={e => changeEntity(e.target.value)}>
               {ENTITIES.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
-            </select>
+            </Select>
           </div>
 
           {/* Columns + Joins inline */}
@@ -634,13 +696,14 @@ export default function Reports() {
             )}
           </div>
 
-          <button
-            className={`${btnPrimary} w-full`}
+          <Button
+            variant="primary"
             disabled={!canRun || isPending}
             onClick={handleRun}
+            className="gap-2 px-5 py-2.5 text-[13px] font-semibold shadow-sm"
           >
-            <Play size={13} /> {isPending ? 'Executando…' : 'Executar consulta'}
-          </button>
+            <Play size={13} fill="currentColor" /> {isPending ? 'Executando…' : 'Executar consulta'}
+          </Button>
         </div>
         )}
 
@@ -653,9 +716,9 @@ export default function Reports() {
                 <span className="text-[13px] font-medium text-ink">
                   {results.length} resultado{results.length !== 1 ? 's' : ''}
                 </span>
-                <button className={btnSecondary} disabled={exporting || results.length === 0} onClick={handleExport}>
+                <Button variant="secondary" disabled={exporting || results.length === 0} onClick={handleExport}>
                   <Download size={13} /> {exporting ? 'Exportando…' : 'Exportar Excel'}
-                </button>
+                </Button>
               </div>
               {results.length === 0 ? (
                 <div className="py-12 text-center text-[13px] text-ink-3">Nenhum resultado encontrado.</div>

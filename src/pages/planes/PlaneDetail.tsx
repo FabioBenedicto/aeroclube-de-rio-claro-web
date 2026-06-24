@@ -1,33 +1,36 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, Plus, Edit, Plane, Clock, ArrowDownLeft, ArrowUpRight, X } from 'lucide-react';
+import { ChevronLeft, Plus, Edit, Plane, Clock, ArrowDownLeft, ArrowUpRight, MoreHorizontal, Eye, Check as CheckIcon, Trash2 } from 'lucide-react';
+import Skeleton from '../../components/ui/Skeleton';
+import type { People, Company, Flight, Receivable, Payable } from '../../types';
 import { getPlane, updatePlane } from '../../api/planes';
 import { getSettings } from '../../api/settings';
 import { getPeoples } from '../../api/peoples';
 import { getCompanies } from '../../api/companies';
-import DateInput from '../../components/DateInput';
-import { createFlight } from '../../api/flights';
-import { createReceivable } from '../../api/receivables';
-import { createPayable } from '../../api/payables';
-import { formatBRL, formatDate, formatHours, receivableStatus, STATUS_LABEL, STATUS_BADGE } from '../../utils/format';
+import { createFlight, updateFlight, closeFlight, deleteFlight, getFlightStats } from '../../api/flights';
+import { createReceivable, updateReceivable, deleteReceivable } from '../../api/receivables';
+import { createPayable, updatePayable, deletePayable } from '../../api/payables';
+import { NewReceivableModal } from '../receivables/NewReceivableModal';
+import { EditReceivableModal } from '../receivables/EditReceivableModal';
+import { NewPayableModal } from '../payables/NewPayableModal';
+import { EditPayableModal } from '../payables/EditPayableModal';
+import { formatBRL, formatDate, formatHours, receivableStatus, payableStatus, STATUS_LABEL, STATUS_BADGE, PAYABLE_STATUS_LABEL } from '../../utils/format';
 import FlightModal from '../flights/FlightModal';
+import CloseFlightModal from '../flights/CloseFlightModal';
 import PlaneModal from './PlaneModal';
 import Badge from '../../components/ui/Badge';
+import Chip from '../../components/ui/Chip';
 import { toast, extractErrorMessage } from '../../utils/toast';
 import Button from '../../components/ui/Button';
-import Input from '../../components/ui/Input';
-import Select from '../../components/ui/Select';
+import RowMenu, { RowMenuSep, RowMenuItem, RowMenuDangerItem } from '../../components/RowMenu';
+import DateRangeFilter from '../../components/DateRangeFilter';
+import Table, { type TableColumn } from '../../components/ui/Table';
 
 type BadgeVariant = 'success' | 'warn' | 'danger' | 'accent' | 'default';
 type TabKey = 'voos' | 'receber_assoc' | 'pagar_assoc';
 
-const P_STATUS_LABEL: Record<string, string> = { open: 'A pagar', partial: 'Parcial', closed: 'Pago' };
-const P_STATUS_BADGE: Record<string, string> = { open: 'warn', partial: 'accent', closed: 'success' };
 
-const thCls = 'px-3.5 py-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
-const thNumCls = 'px-3.5 py-2.5 text-right text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 bg-bg border-b border-line';
-const tdCls = 'px-3.5 py-2.5 border-b border-line';
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'voos', label: 'Voos' },
@@ -46,23 +49,61 @@ export default function PlaneDetail() {
   const [editPlaneModal, setEditPlaneModal] = useState(false);
   const [newRecModal, setNewRecModal] = useState(false);
   const [newPayModal, setNewPayModal] = useState(false);
+  const [editFlight, setEditFlight] = useState<Flight | null>(null);
+  const [editRec, setEditRec] = useState<Receivable | null>(null);
+  const [editPay, setEditPay] = useState<Payable | null>(null);
+  const [closingFlight, setClosingFlight] = useState<Flight | null>(null);
+  const [flightMenu, setFlightMenu] = useState<{ id: number; top: number; right: number } | null>(null);
+  const [recMenu, setRecMenu] = useState<{ id: number; top: number; right: number } | null>(null);
+  const [payMenu, setPayMenu] = useState<{ id: number; top: number; right: number } | null>(null);
 
-  const [pendingFrom, setPendingFrom] = useState('');
-  const [pendingTo, setPendingTo] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
   const { data: plane, isLoading } = useQuery({ queryKey: ['plane', planeId], queryFn: () => getPlane(planeId) });
-  const { data: customersResponse } = useQuery({ queryKey: ['peoples'], queryFn: () => getPeoples(), enabled: flightModal });
+  const { data: planeFlightStats } = useQuery({ queryKey: ['flights', 'stats', 'aircraft', planeId], queryFn: () => getFlightStats({ aircraftId: planeId }) });
+  const { data: customersResponse } = useQuery({ queryKey: ['peoples'], queryFn: () => getPeoples(), enabled: flightModal || !!editFlight });
   const customersData = customersResponse?.data ?? [];
-  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: getSettings, enabled: plane?.aircraft_type === 'glider' });
+  const { data: settings, isLoading: settingsLoading, isError: settingsError } = useQuery({ queryKey: ['settings'], queryFn: getSettings, enabled: plane?.type === 'GLIDER' });
+
+  const titleModalOpen = newRecModal || newPayModal;
+  const { data: allCustomersData } = useQuery({ queryKey: ['peoples', '', 'all', 1], queryFn: () => getPeoples(undefined, undefined, 1, 9999), enabled: titleModalOpen });
+  const allCustomers = allCustomersData?.data ?? [];
+  const { data: instructorData } = useQuery({ queryKey: ['peoples', '', 'instructor', 1], queryFn: () => getPeoples(undefined, 'instructor', 1, 9999), enabled: titleModalOpen });
+  const instructors = (instructorData?.data ?? []).filter((c: People) => c.instructors != null).map((c: People) => ({ id: c.instructors!.id, name: c.name }));
+  const { data: partnerData } = useQuery({ queryKey: ['peoples', '', 'partner', 1], queryFn: () => getPeoples(undefined, 'partner', 1, 9999), enabled: titleModalOpen });
+  const partners = (partnerData?.data ?? []).filter((c: People) => c.partners != null).map((c: People) => ({ id: c.partners!.id, name: c.name }));
+  const { data: employeeData } = useQuery({ queryKey: ['peoples', '', 'employee', 1], queryFn: () => getPeoples(undefined, 'employee', 1, 9999), enabled: titleModalOpen });
+  const employees = (employeeData?.data ?? []).filter((c: People) => c.employees != null).map((c: People) => ({ id: c.employees!.id, name: c.name }));
+  const { data: studentData } = useQuery({ queryKey: ['peoples', '', 'student', 1], queryFn: () => getPeoples(undefined, 'student', 1, 9999), enabled: titleModalOpen });
+  const students = (studentData?.data ?? []).filter((c: People) => c.students != null).map((c: People) => ({ id: c.students!.id, name: c.name }));
+  const { data: companiesData } = useQuery({ queryKey: ['companies', '', 1], queryFn: () => getCompanies(undefined, 1, 9999), enabled: titleModalOpen });
+  const companies: Company[] = companiesData?.data ?? [];
   const [gliderTooltip, setGliderTooltip] = useState<{ top: number; left: number } | null>(null);
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['plane', planeId] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['plane', planeId] });
+    qc.invalidateQueries({ queryKey: ['flights', 'stats', 'aircraft', planeId] });
+  };
 
   const flightMut = useMutation({
     mutationFn: createFlight,
     onSuccess: () => { invalidate(); setFlightModal(false); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
+  });
+  const updateFlightMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: unknown }) => updateFlight(id, data),
+    onSuccess: () => { invalidate(); setEditFlight(null); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
+  });
+  const closeFlightMut = useMutation({
+    mutationFn: ({ id, end_date }: { id: number; end_date: string }) => closeFlight(id, end_date),
+    onSuccess: () => { invalidate(); setClosingFlight(null); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
+  });
+  const deleteFlightMut = useMutation({
+    mutationFn: deleteFlight,
+    onSuccess: () => { invalidate(); setFlightMenu(null); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
   const updatePlaneMut = useMutation({
@@ -80,8 +121,53 @@ export default function PlaneDetail() {
     onSuccess: () => { invalidate(); setNewPayModal(false); },
     onError: (e: unknown) => toast.error(extractErrorMessage(e)),
   });
+  const deleteRecMut = useMutation({
+    mutationFn: deleteReceivable,
+    onSuccess: () => { invalidate(); setRecMenu(null); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
+  });
+  const updateRecMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: unknown }) => updateReceivable(id, data),
+    onSuccess: () => { invalidate(); setEditRec(null); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
+  });
+  const deletePayMut = useMutation({
+    mutationFn: deletePayable,
+    onSuccess: () => { invalidate(); setPayMenu(null); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
+  });
+  const updatePayMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: unknown }) => updatePayable(id, data),
+    onSuccess: () => { invalidate(); setEditPay(null); },
+    onError: (e: unknown) => toast.error(extractErrorMessage(e)),
+  });
 
-  if (isLoading) return <div className="p-8 text-[13px] text-ink-3">Carregando…</div>;
+  if (isLoading) return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <Skeleton.Block className="h-[13px] w-14 mb-1" />
+          <Skeleton.Title width="w-32" />
+          <div className="flex items-center gap-2 mt-1">
+            <Skeleton.Block className="h-5 w-16 rounded-full" />
+            <Skeleton.Text width="w-24" />
+          </div>
+        </div>
+        <Skeleton.Block className="h-8 w-20 rounded-lg mt-6" />
+      </div>
+      <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-6">
+        <div className="grid grid-cols-4 gap-3">
+          {[0, 1, 2, 3].map(i => <Skeleton.Card key={i} />)}
+        </div>
+        <div className="bg-bg-elev border border-line rounded-lg overflow-hidden">
+          <div className="px-3 py-2.5 border-b border-line"><Skeleton.Text width="w-24" /></div>
+          <table className="w-full border-collapse">
+            <tbody><Skeleton.TableRows cols={9} rows={5} /></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
   if (!plane) return <div className="p-8 text-[13px] text-ink-3">Aeronave não encontrada.</div>;
 
   function inRange(dateStr: string | null | undefined): boolean {
@@ -95,12 +181,130 @@ export default function PlaneDetail() {
   const flights = (plane.flights ?? []).filter(f => inRange(f.created_at));
   const payables = (plane.payables ?? []).filter(p => inRange(p.created_at));
   const receivables = (plane.receivables ?? []).filter(r => inRange(r.created_at));
-  const assocReceivables = receivables.filter(r => r.payer_type != null && r.payer_type !== 'none');
-  const assocPayables = payables.filter(p => p.payer_type != null && p.payer_type !== 'none');
+  const assocReceivables = receivables.filter(r => r.stakeholder != null && r.stakeholder !== 'NONE');
+  const assocPayables = payables.filter(p => p.stakeholder != null && p.stakeholder !== 'NONE');
 
-  const totalHours   = flights.reduce((s, f) => s + (Number(f.total_hours)  || 0), 0);
-  const totalRevenue = flights.reduce((s, f) => s + (Number(f.total_amount) || 0), 0);
-  const totalExpense = payables.reduce((s, p) => s + Number(p.amount), 0);
+  const flightColumns: TableColumn<Flight>[] = [
+    { key: 'id', label: 'ID', render: f => <span className="font-mono text-[11.5px]">{f.id}</span> },
+    {
+      key: 'aircraft', label: 'Aeronave',
+      render: f => (
+        <span className="flex items-center gap-1.5 font-medium">
+          {f.aircraft?.registration ?? String(f.aircraft_id)}
+          {f.aircraft?.type === 'GLIDER' && <span className="inline-block px-1.5 py-0.5 text-[10px] font-semibold rounded bg-bg-sunk text-ink-3 border border-line leading-none">Planador</span>}
+        </span>
+      ),
+    },
+    { key: 'people', label: 'Cliente', render: f => f.people?.name ?? String(f.people_id) },
+    { key: 'instructor', label: 'Instrutor', render: f => f.instructor?.people?.name ?? '—' },
+    { key: 'type', label: 'Tipo', render: f => f.type ? <Chip>{f.type}</Chip> : '—' },
+    { key: 'route', label: 'Rota', render: f => <span className="font-mono text-[12px]">{f.origin} → {f.destination}</span> },
+    { key: 'start_date', label: 'Início', cellClassName: 'font-mono text-[12px]', render: f => formatDate(f.start_date) },
+    { key: 'total_hours', label: 'Horas', headerClassName: 'text-right', cellClassName: 'text-right font-mono', render: f => formatHours(f.total_hours) },
+    {
+      key: 'total_amount', label: 'Valor', headerClassName: 'text-right', cellClassName: 'text-right font-mono',
+      render: f => f.total_amount != null ? (
+        <span
+          title={f.calculation_breakdown?.aircraft_type === 'glider'
+            ? `Franquia: ${f.calculation_breakdown.initial_minutes} min = R$ ${f.calculation_breakdown.initial_value?.toFixed(2)}\nExcedente: ${f.calculation_breakdown.exceeded_minutes} min × R$ ${f.calculation_breakdown.minute_value?.toFixed(2)}/min\nTotal: ${f.calculation_breakdown.total_minutes} min = R$ ${f.calculation_breakdown.total_amount.toFixed(2)}`
+            : undefined}
+          className={f.calculation_breakdown?.aircraft_type === 'glider' ? 'cursor-help underline decoration-dotted' : undefined}
+        >R$ {formatBRL(f.total_amount)}</span>
+      ) : '—',
+    },
+    {
+      key: 'actions', label: '', headerClassName: 'w-10', cellClassName: 'w-10', stopPropagation: true,
+      render: f => (
+        <Button variant="icon" onClick={e => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setFlightMenu(s => s?.id === f.id ? null : { id: f.id, top: r.bottom + 4, right: window.innerWidth - r.right }); }}>
+          <MoreHorizontal size={15} />
+        </Button>
+      ),
+    },
+  ];
+
+  const recColumns: TableColumn<Receivable>[] = [
+    { key: 'id', label: 'ID', render: r => <span className="font-mono text-[11.5px]">{r.id}</span> },
+    { key: 'title', label: 'Título', render: r => <span className="font-medium">{r.title}</span> },
+    { key: 'product', label: 'Tipo', render: r => r.receivable_type?.name ? <Chip>{r.receivable_type.name}</Chip> : '—' },
+    {
+      key: 'payer', label: 'Pagador',
+      render: r => {
+        const name = r.people?.name ?? r.person?.name ?? r.company?.name ?? r.instructor?.people?.name ?? r.instructor?.customer?.name ?? r.partner?.people?.name ?? r.partner?.customer?.name ?? r.employee?.people?.name ?? r.employee?.customer?.name ?? '—';
+        return <span className="text-[12px] text-ink-3">{name}</span>;
+      },
+    },
+    { key: 'expiration_date', label: 'Vencimento', render: r => <span className="font-mono text-[12px]">{formatDate(r.expiration_date)}</span> },
+    { key: 'total_amount', label: 'Valor', headerClassName: 'text-right', cellClassName: 'text-right font-mono', render: r => `R$ ${formatBRL(r.total_amount)}` },
+    { key: 'amount_received', label: 'Recebido', headerClassName: 'text-right', cellClassName: 'text-right font-mono', render: r => `R$ ${formatBRL(r.amount_received)}` },
+    {
+      key: 'progress', label: 'Progresso', headerClassName: 'min-w-[120px]',
+      render: r => {
+        const st = receivableStatus(r);
+        const pct = Number(r.total_amount) > 0 ? Math.round((Number(r.amount_received) / Number(r.total_amount)) * 100) : 0;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-bg-sunk rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: st === 'paid' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--line)', transition: 'width 0.3s' }} /></div>
+            <span className="font-mono text-[11px] min-w-[32px] text-right" style={{ color: st === 'paid' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--ink-3)' }}>{pct}%</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'status', label: 'Status',
+      render: r => { const st = receivableStatus(r); return <Badge variant={(STATUS_BADGE[st] ?? 'default') as BadgeVariant}>{STATUS_LABEL[st]}</Badge>; },
+    },
+    {
+      key: 'actions', label: '', headerClassName: 'w-10', cellClassName: 'w-10', stopPropagation: true,
+      render: r => (
+        <Button variant="icon" onClick={e => { e.stopPropagation(); const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); setRecMenu(s => s?.id === r.id ? null : { id: r.id, top: rect.bottom + 4, right: window.innerWidth - rect.right }); }}>
+          <MoreHorizontal size={15} />
+        </Button>
+      ),
+    },
+  ];
+
+  const payColumns: TableColumn<Payable>[] = [
+    { key: 'id', label: 'ID', render: p => <span className="font-mono text-[11.5px]">{p.id}</span> },
+    { key: 'title', label: 'Título', render: p => <span className="font-medium">{p.title}</span> },
+    { key: 'product', label: 'Tipo', render: p => p.payable_type?.name ? <Chip>{p.payable_type.name}</Chip> : '—' },
+    {
+      key: 'payer', label: 'Recebedor',
+      render: p => {
+        const name = p.people?.name ?? p.company?.name ?? p.instructor?.people?.name ?? p.partner?.people?.name ?? p.employee?.people?.name ?? '—';
+        return <span className="text-[12px] text-ink-3">{name}</span>;
+      },
+    },
+    { key: 'expiration_date', label: 'Vencimento', render: p => <span className="font-mono text-[12px]">{p.expiration_date ? formatDate(p.expiration_date) : '—'}</span> },
+    { key: 'total_amount', label: 'Valor', headerClassName: 'text-right', cellClassName: 'text-right font-mono', render: p => `R$ ${formatBRL(p.total_amount)}` },
+    { key: 'amount_paid', label: 'Pago', headerClassName: 'text-right', cellClassName: 'text-right font-mono', render: p => `R$ ${formatBRL(p.amount_paid)}` },
+    {
+      key: 'progress', label: 'Progresso', headerClassName: 'w-32', cellClassName: 'w-32',
+      render: p => {
+        const st = payableStatus(p);
+        const pct = Number(p.total_amount) > 0 ? Math.round((Number(p.amount_paid) / Number(p.total_amount)) * 100) : 0;
+        return (
+          <div className="flex items-center gap-2">
+            <div className="flex-1 h-1.5 bg-bg-sunk rounded-full overflow-hidden"><div className="h-full rounded-full" style={{ width: `${pct}%`, background: st === 'paid' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--line)', transition: 'width 0.3s' }} /></div>
+            <span className="font-mono text-[11px] min-w-[32px] text-right" style={{ color: st === 'paid' ? 'var(--success)' : pct > 0 ? 'var(--warn)' : 'var(--ink-3)' }}>{pct}%</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'status', label: 'Status',
+      render: p => { const st = payableStatus(p); return <Badge variant={STATUS_BADGE[st] as BadgeVariant}>{PAYABLE_STATUS_LABEL[st]}</Badge>; },
+    },
+    {
+      key: 'actions', label: '', headerClassName: 'w-10', cellClassName: 'w-10', stopPropagation: true,
+      render: p => (
+        <Button variant="icon" onClick={e => { e.stopPropagation(); const rect = (e.currentTarget as HTMLElement).getBoundingClientRect(); setPayMenu(s => s?.id === p.id ? null : { id: p.id, top: rect.bottom + 4, right: window.innerWidth - rect.right }); }}>
+          <MoreHorizontal size={15} />
+        </Button>
+      ),
+    },
+  ];
+
+  const totalExpense = payables.reduce((s, p) => s + Number(p.total_amount), 0);
 
   return (
     <div className="flex flex-col gap-4">
@@ -111,12 +315,12 @@ export default function PlaneDetail() {
           </button>
           <h1 className="text-[22px] font-bold tracking-[-0.02em] m-0 font-mono">{plane.registration}</h1>
           <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-            <span className={`inline-flex items-center px-2 py-0.5 text-[11px] font-semibold rounded border leading-none ${plane.aircraft_type === 'glider' ? 'bg-bg-sunk text-ink-3 border-line' : 'bg-accent/8 text-accent border-accent/20'}`}>
-              {plane.aircraft_type === 'glider' ? 'Planador' : 'Avião'}
-            </span>
+            <Chip variant="default">
+              {plane.type === 'GLIDER' ? 'Planador' : 'Avião'}
+            </Chip>
             {plane.model && <><span className="text-ink-3 text-[13px]">·</span><span className="text-[13px] text-ink-2">{plane.model}</span></>}
             <span className="text-ink-3 text-[13px]">·</span>
-            {plane.aircraft_type !== 'glider' && plane.flight_hour_value != null
+            {plane.type !== 'GLIDER' && plane.flight_hour_value != null
               ? <span className="text-[13px] font-mono text-ink-2">R$ {formatBRL(plane.flight_hour_value)}<span className="text-ink-3">/h</span></span>
               : <span
                   className="text-[13px] text-ink-2 underline decoration-dashed underline-offset-2 cursor-default"
@@ -132,39 +336,28 @@ export default function PlaneDetail() {
       </div>
 
       <div className="bg-bg-sunk border border-line rounded-xl p-5 flex flex-col gap-6">
-        <div className="flex items-center gap-3 justify-end">
-          <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Criação</span>
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">de</span>
-            <DateInput value={pendingFrom} onChange={setPendingFrom} />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-[12px] font-medium text-ink-2 whitespace-nowrap">Até</span>
-            <DateInput value={pendingTo} onChange={setPendingTo} />
-          </div>
-          <Button variant="primary" onClick={() => { setDateFrom(pendingFrom); setDateTo(pendingTo); }}>Aplicar</Button>
-        </div>
+        <DateRangeFilter label="Criação" onApply={(from, to) => { setDateFrom(from); setDateTo(to); }} />
 
         <div className="grid grid-cols-4 gap-3">
           <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
             <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Plane size={18} /></div>
             <div className="flex flex-col gap-0.5 min-w-0 w-full">
               <div className="text-[12px] text-ink-3 font-medium">Total de voos</div>
-              <div className="text-[20px] font-bold tracking-tight leading-none">{flights.length}</div>
+              <div className="text-[20px] font-bold tracking-tight leading-none">{planeFlightStats?.total ?? 0}</div>
             </div>
           </div>
           <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
             <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-bg-sunk text-ink-3"><Clock size={18} /></div>
             <div className="flex flex-col gap-0.5 min-w-0 w-full">
               <div className="text-[12px] text-ink-3 font-medium">Total de horas de voo</div>
-              <div className="text-[20px] font-bold tracking-tight leading-none font-mono">{totalHours.toFixed(1)}h</div>
+              <div className="text-[20px] font-bold tracking-tight leading-none font-mono">{formatHours(planeFlightStats?.total_hours ?? 0)}</div>
             </div>
           </div>
           <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
             <div className="w-9 h-9 rounded-[8px] grid place-items-center shrink-0 bg-success-soft text-success"><ArrowDownLeft size={18} /></div>
             <div className="flex flex-col gap-0.5 min-w-0 w-full">
               <div className="text-[12px] text-ink-3 font-medium">Receita gerada</div>
-              <div className="text-[20px] font-bold tracking-tight leading-none font-mono text-success">R$ {formatBRL(totalRevenue)}</div>
+              <div className="text-[20px] font-bold tracking-tight leading-none font-mono text-success">R$ {formatBRL(planeFlightStats?.total_revenue ?? 0)}</div>
             </div>
           </div>
           <div className="bg-bg-elev border border-line rounded-lg p-4 flex items-start gap-3">
@@ -201,120 +394,15 @@ export default function PlaneDetail() {
         </div>
 
         {tab === 'voos' && (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[13px]">
-              <thead>
-                <tr>
-                  <th className={thCls}>Cliente</th><th className={thCls}>Tipo</th><th className={thCls}>Rota</th>
-                  <th className={thCls}>Início</th><th className={thNumCls}>Horas</th><th className={thNumCls}>Valor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {flights.length === 0 && <tr><td colSpan={6} className="px-3.5 py-6 text-center text-ink-3">Nenhum voo encontrado.</td></tr>}
-                {flights.map(f => (
-                  <tr key={f.id} className="hover:bg-bg-hover">
-                    <td className={`${tdCls} font-medium`}>{f.customer?.name ?? `${f.customer_id}`}</td>
-                    <td className={tdCls}>{f.type}</td>
-                    <td className={`${tdCls} font-mono text-[12px]`}>{f.origin} → {f.destination}</td>
-                    <td className={`${tdCls} font-mono text-[12px]`}>{formatDate(f.start_date)}</td>
-                    <td className={`${tdCls} text-right font-mono`}>{formatHours(f.total_hours)}</td>
-                    <td className={`${tdCls} text-right font-mono`}>{f.total_amount != null ? `R$ ${formatBRL(f.total_amount)}` : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table columns={flightColumns} data={flights} keyField="id" emptyMessage="Nenhum voo encontrado." />
         )}
 
         {tab === 'receber_assoc' && (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[13px]">
-              <thead>
-                <tr>
-                  <th className={thCls}>Título</th>
-                  <th className={thCls}>Pagador</th>
-                  <th className={thCls}>Vencimento</th>
-                  <th className={thNumCls}>Valor</th>
-                  <th className={thNumCls}>Recebido</th>
-                  <th className={thCls}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {assocReceivables.length === 0 && <tr><td colSpan={6} className="px-3.5 py-6 text-center text-ink-3">Nenhum título associado.</td></tr>}
-                {assocReceivables.map(r => {
-                  const st = receivableStatus(r);
-                  const payerLabel: Record<string, string> = { customer: 'Cliente', company: 'Empresa', instructor: 'Instrutor', partner: 'Sócio', employee: 'Funcionário' };
-                  const payerName = r.customer?.name ?? r.company?.name ?? r.instructor?.customer?.name ?? '—';
-                  return (
-                    <tr key={r.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/receivables/${r.id}`)}>
-                      <td className={`${tdCls} font-medium`}>{r.title}</td>
-                      <td className={tdCls}>
-                        <div>{payerName}</div>
-                        {r.payer_type && <div className="text-[11.5px] text-ink-3 mt-0.5">{payerLabel[r.payer_type] ?? r.payer_type}</div>}
-                      </td>
-                      <td className={`${tdCls} font-mono text-[12px]`}>{formatDate(r.expiration_date)}</td>
-                      <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(r.total_amount)}</td>
-                      <td className={`${tdCls} text-right font-mono`}>{Number(r.amount_received) > 0 ? `R$ ${formatBRL(r.amount_received)}` : '—'}</td>
-                      <td className={tdCls}><Badge variant={(STATUS_BADGE[st] ?? 'default') as BadgeVariant}>{STATUS_LABEL[st]}</Badge></td>
-                    </tr>
-                  );
-                })}
-                {assocReceivables.length > 0 && (
-                  <tr className="font-semibold bg-bg-sunk">
-                    <td colSpan={3} className="px-3.5 py-2.5 text-right text-[12px] text-ink-3">Total</td>
-                    <td className="px-3.5 py-2.5 text-right font-mono">R$ {formatBRL(assocReceivables.reduce((s, r) => s + Number(r.total_amount), 0))}</td>
-                    <td className="px-3.5 py-2.5 text-right font-mono">R$ {formatBRL(assocReceivables.reduce((s, r) => s + Number(r.amount_received), 0))}</td>
-                    <td />
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table columns={recColumns} data={assocReceivables} keyField="id" onRowClick={r => navigate(`/receivables/${r.id}`)} emptyMessage="Nenhum título associado." />
         )}
 
         {tab === 'pagar_assoc' && (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-[13px]">
-              <thead>
-                <tr>
-                  <th className={thCls}>Título</th>
-                  <th className={thCls}>Recebedor</th>
-                  <th className={thCls}>Vencimento</th>
-                  <th className={thNumCls}>Valor</th>
-                  <th className={thNumCls}>Pago</th>
-                  <th className={thCls}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {assocPayables.length === 0 && <tr><td colSpan={6} className="px-3.5 py-6 text-center text-ink-3">Nenhum título associado.</td></tr>}
-                {assocPayables.map(p => {
-                  const payerLabel: Record<string, string> = { customer: 'Cliente', company: 'Empresa', instructor: 'Instrutor', partner: 'Sócio', employee: 'Funcionário' };
-                  const payerName = p.customer?.name ?? p.company?.name ?? p.instructor?.customer?.name ?? '—';
-                  return (
-                    <tr key={p.id} className="cursor-pointer hover:bg-bg-hover" onClick={() => navigate(`/payables/${p.id}`)}>
-                      <td className={`${tdCls} font-medium`}>{p.title}</td>
-                      <td className={tdCls}>
-                        <div>{payerName}</div>
-                        {p.payer_type && <div className="text-[11.5px] text-ink-3 mt-0.5">{payerLabel[p.payer_type] ?? p.payer_type}</div>}
-                      </td>
-                      <td className={`${tdCls} font-mono text-[12px]`}>{p.due_date ? formatDate(p.due_date) : '—'}</td>
-                      <td className={`${tdCls} text-right font-mono`}>R$ {formatBRL(p.amount)}</td>
-                      <td className={`${tdCls} text-right font-mono`}>{Number(p.amount_paid) > 0 ? `R$ ${formatBRL(p.amount_paid)}` : '—'}</td>
-                      <td className={tdCls}><Badge variant={(P_STATUS_BADGE[p.status] ?? 'default') as BadgeVariant}>{P_STATUS_LABEL[p.status] ?? p.status}</Badge></td>
-                    </tr>
-                  );
-                })}
-                {assocPayables.length > 0 && (
-                  <tr className="font-semibold bg-bg-sunk">
-                    <td colSpan={3} className="px-3.5 py-2.5 text-right text-[12px] text-ink-3">Total</td>
-                    <td className="px-3.5 py-2.5 text-right font-mono">R$ {formatBRL(assocPayables.reduce((s, p) => s + Number(p.amount), 0))}</td>
-                    <td className="px-3.5 py-2.5 text-right font-mono">R$ {formatBRL(assocPayables.reduce((s, p) => s + Number(p.amount_paid), 0))}</td>
-                    <td />
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          <Table columns={payColumns} data={assocPayables} keyField="id" onRowClick={p => navigate(`/payables/${p.id}`)} emptyMessage="Nenhum título associado." />
         )}
         </div>
       </div>
@@ -322,11 +410,26 @@ export default function PlaneDetail() {
       {flightModal && (
         <FlightModal
           mode="new"
-          customers={customersData}
           planes={[plane]}
           initialPlaneId={plane.id}
           onClose={() => setFlightModal(false)}
           onSave={(data) => flightMut.mutate(data)}
+        />
+      )}
+      {editFlight && (
+        <FlightModal
+          mode="edit"
+          flight={editFlight}
+          planes={[plane]}
+          onClose={() => setEditFlight(null)}
+          onSave={(data) => updateFlightMut.mutate({ id: editFlight.id, data })}
+        />
+      )}
+      {closingFlight && (
+        <CloseFlightModal
+          flight={closingFlight}
+          onClose={() => setClosingFlight(null)}
+          onSave={(end_date) => closeFlightMut.mutate({ id: closingFlight.id, end_date })}
         />
       )}
       {editPlaneModal && (
@@ -337,125 +440,96 @@ export default function PlaneDetail() {
           onSave={(data) => updatePlaneMut.mutate(data)}
         />
       )}
-      {newRecModal && <NewReceivableForPlaneModal planeId={planeId} onClose={() => setNewRecModal(false)} onSave={d => newRecMut.mutate(d)} />}
-      {newPayModal && <NewPayableForPlaneModal planeId={planeId} onClose={() => setNewPayModal(false)} onSave={d => newPayMut.mutate(d)} />}
-      {gliderTooltip && settings && (
+      {newRecModal && (
+        <NewReceivableModal
+          customers={allCustomers}
+          students={students}
+          instructors={instructors}
+          partners={partners}
+          employees={employees}
+          planes={[]}
+          companies={companies}
+          initialPlaneId={planeId}
+          onClose={() => setNewRecModal(false)}
+          onSave={d => newRecMut.mutate(d)}
+        />
+      )}
+      {editRec && (
+        <EditReceivableModal
+          rec={editRec}
+          onClose={() => setEditRec(null)}
+          onSave={d => updateRecMut.mutate({ id: editRec.id, data: d })}
+        />
+      )}
+      {editPay && (
+        <EditPayableModal
+          payable={editPay}
+          onClose={() => setEditPay(null)}
+          onSave={d => updatePayMut.mutate({ id: editPay.id, data: d })}
+        />
+      )}
+      {newPayModal && (
+        <NewPayableModal
+          customers={allCustomers}
+          students={students}
+          instructors={instructors}
+          partners={partners}
+          employees={employees}
+          planes={[]}
+          companies={companies}
+          initialPlaneId={planeId}
+          onClose={() => setNewPayModal(false)}
+          onSave={d => newPayMut.mutate(d)}
+        />
+      )}
+      {flightMenu && (() => { const f = flights.find(x => x.id === flightMenu.id); return f ? (
+        <RowMenu top={flightMenu.top} right={flightMenu.right} onClose={() => setFlightMenu(null)}>
+          {!f.end_date && <RowMenuItem icon={<CheckIcon size={14} />} onClick={() => { setFlightMenu(null); setClosingFlight(f); }}>Encerrar voo</RowMenuItem>}
+          <RowMenuItem icon={<Edit size={14} />} onClick={() => { setFlightMenu(null); setEditFlight(f); }}>Editar</RowMenuItem>
+          <RowMenuSep />
+          <RowMenuDangerItem icon={<Trash2 size={14} />} onClick={() => deleteFlightMut.mutate(f.id)}>Remover</RowMenuDangerItem>
+        </RowMenu>
+      ) : null; })()}
+      {recMenu && (() => { const r = assocReceivables.find(x => x.id === recMenu.id); return r ? (
+        <RowMenu top={recMenu.top} right={recMenu.right} onClose={() => setRecMenu(null)}>
+          <RowMenuItem icon={<Eye size={14} />} onClick={() => { setRecMenu(null); navigate(`/receivables/${r.id}`); }}>Ver detalhes</RowMenuItem>
+          <RowMenuItem icon={<Edit size={14} />} onClick={() => { setRecMenu(null); setEditRec(r); }}>Editar</RowMenuItem>
+          <RowMenuSep />
+          <RowMenuDangerItem icon={<Trash2 size={14} />} onClick={() => deleteRecMut.mutate(r.id)}>Remover</RowMenuDangerItem>
+        </RowMenu>
+      ) : null; })()}
+      {payMenu && (() => { const p = assocPayables.find(x => x.id === payMenu.id); return p ? (
+        <RowMenu top={payMenu.top} right={payMenu.right} onClose={() => setPayMenu(null)}>
+          <RowMenuItem icon={<Eye size={14} />} onClick={() => { setPayMenu(null); navigate(`/payables/${p.id}`); }}>Ver detalhes</RowMenuItem>
+          <RowMenuItem icon={<Edit size={14} />} onClick={() => { setPayMenu(null); setEditPay(p); }}>Editar</RowMenuItem>
+          <RowMenuSep />
+          <RowMenuDangerItem icon={<Trash2 size={14} />} onClick={() => deletePayMut.mutate(p.id)}>Remover</RowMenuDangerItem>
+        </RowMenu>
+      ) : null; })()}
+
+      {gliderTooltip && (
         <div
           className="fixed z-50 w-56 rounded-lg border border-line bg-bg-elev shadow-[var(--shadow)] px-3 py-2.5 pointer-events-none"
           style={{ top: gliderTooltip.top, left: gliderTooltip.left, transform: 'translateY(-100%)' }}
         >
           <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-3 mb-2">Cobrança do planador</div>
-          <div className="text-[12px] text-ink">
-            <span className="text-ink-3">Franquia </span>{settings.glider_initial_minutes} min → <strong>R$ {Number(settings.glider_initial_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
-          </div>
-          <div className="text-[12px] text-ink mt-1">
-            <span className="text-ink-3">Excedente </span>R$ {Number(settings.glider_minute_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<span className="text-ink-3">/min</span>
-          </div>
+          {settingsLoading ? (
+            <div className="flex flex-col gap-2"><Skeleton.Text width="w-full" /><Skeleton.Text width="w-4/5" /></div>
+          ) : settingsError || !settings ? (
+            <div className="text-[12px] text-ink-3">Configure em <strong>Configurações → Planador</strong></div>
+          ) : (
+            <>
+              <div className="text-[12px] text-ink">
+                <span className="text-ink-3">Franquia </span>{settings.glider_initial_minutes} min → <strong>R$ {Number(settings.glider_initial_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+              </div>
+              <div className="text-[12px] text-ink mt-1">
+                <span className="text-ink-3">Excedente </span>R$ {Number(settings.glider_minute_value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<span className="text-ink-3">/min</span>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-const modalBase = 'fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4';
-const modalPanel = 'bg-bg-elev border border-line rounded-[10px] w-full max-w-[420px] shadow-[var(--shadow)] flex flex-col';
-const modalHead = 'flex items-start justify-between px-[18px] pt-[18px] pb-4 border-b border-line gap-3';
-const modalBody = 'p-[18px] flex flex-col gap-4';
-const modalFoot = 'flex items-center justify-end gap-2 px-[18px] py-3.5 border-t border-line';
-const field = 'flex flex-col gap-1.5';
-const lbl = 'text-[12px] font-medium text-ink-2';
-function NewReceivableForPlaneModal({ planeId, onClose, onSave }: { planeId: number; onClose: () => void; onSave: (d: unknown) => void }) {
-  const [form, setForm] = useState({ title: '', total_amount: '', expiration_date: '', product: 'servico' });
-  const { data: customersData } = useQuery({ queryKey: ['peoples', '', 'all', 1], queryFn: () => getPeoples(undefined, undefined, 1, 9999) });
-  const { data: companiesData } = useQuery({ queryKey: ['companies', '', 1], queryFn: () => getCompanies(undefined, 1, 9999) });
-  const [clientId, setClientId] = useState('');
-  const [companyId, setCompanyId] = useState('');
-  return (
-    <div className={modalBase} onClick={onClose}>
-      <div className={modalPanel} onClick={e => e.stopPropagation()}>
-        <div className={modalHead}>
-          <h3 className="text-[15px] font-semibold m-0">Novo título a receber</h3>
-          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
-        </div>
-        <div className={modalBody}>
-          <div className={field}><label className={lbl}>Título</label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className={field}><label className={lbl}>Vencimento</label><DateInput value={form.expiration_date} onChange={v => setForm(f => ({ ...f, expiration_date: v }))} /></div>
-            <div className={field}><label className={lbl}>Valor</label>
-              <div className="flex rounded-md border border-line overflow-hidden focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus)]">
-                <span className="flex items-center px-2.5 text-[13px] text-ink-3 bg-bg-sunk border-r border-line">R$</span>
-                <input type="number" step="0.01" className="flex-1 px-2.5 py-[7px] border-0 bg-bg-elev text-ink text-[13px] font-mono outline-none" value={form.total_amount} onChange={e => setForm(f => ({ ...f, total_amount: e.target.value }))} />
-              </div>
-            </div>
-          </div>
-          <div className={field}><label className={lbl}>Cliente</label>
-            <Select value={clientId} onChange={e => setClientId(e.target.value)}>
-              <option value="">Nenhum</option>
-              {(customersData?.data ?? []).map((c: { id: number; name: string }) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </Select>
-          </div>
-          <div className={field}><label className={lbl}>Empresa</label>
-            <Select value={companyId} onChange={e => setCompanyId(e.target.value)}>
-              <option value="">Nenhuma</option>
-              {(companiesData?.data ?? []).map((c: { id: number; name: string }) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </Select>
-          </div>
-        </div>
-        <div className={modalFoot}>
-          <Button variant="default" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" onClick={() => onSave({ title: form.title, total_amount: parseFloat(form.total_amount), expiration_date: form.expiration_date || undefined, product: form.product, plane_id: planeId, client_id: clientId ? Number(clientId) : undefined, company_id: companyId ? Number(companyId) : undefined })}>
-            Criar título
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function NewPayableForPlaneModal({ planeId, onClose, onSave }: { planeId: number; onClose: () => void; onSave: (d: unknown) => void }) {
-  const [form, setForm] = useState({ title: '', amount: '', due_date: '', product: 'manutencao' });
-  const { data: customersData } = useQuery({ queryKey: ['peoples', '', 'all', 1], queryFn: () => getPeoples(undefined, undefined, 1, 9999) });
-  const { data: companiesData } = useQuery({ queryKey: ['companies', '', 1], queryFn: () => getCompanies(undefined, 1, 9999) });
-  const [clientId, setClientId] = useState('');
-  const [companyId, setCompanyId] = useState('');
-  return (
-    <div className={modalBase} onClick={onClose}>
-      <div className={modalPanel} onClick={e => e.stopPropagation()}>
-        <div className={modalHead}>
-          <h3 className="text-[15px] font-semibold m-0">Novo título a pagar</h3>
-          <Button variant="icon" onClick={onClose}><X size={16} /></Button>
-        </div>
-        <div className={modalBody}>
-          <div className={field}><label className={lbl}>Título</label><Input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className={field}><label className={lbl}>Vencimento</label><DateInput value={form.due_date} onChange={v => setForm(f => ({ ...f, due_date: v }))} /></div>
-            <div className={field}><label className={lbl}>Valor</label>
-              <div className="flex rounded-md border border-line overflow-hidden focus-within:border-accent focus-within:shadow-[0_0_0_3px_var(--focus)]">
-                <span className="flex items-center px-2.5 text-[13px] text-ink-3 bg-bg-sunk border-r border-line">R$</span>
-                <input type="number" step="0.01" className="flex-1 px-2.5 py-[7px] border-0 bg-bg-elev text-ink text-[13px] font-mono outline-none" value={form.amount} onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
-              </div>
-            </div>
-          </div>
-          <div className={field}><label className={lbl}>Cliente</label>
-            <Select value={clientId} onChange={e => setClientId(e.target.value)}>
-              <option value="">Nenhum</option>
-              {(customersData?.data ?? []).map((c: { id: number; name: string }) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </Select>
-          </div>
-          <div className={field}><label className={lbl}>Empresa</label>
-            <Select value={companyId} onChange={e => setCompanyId(e.target.value)}>
-              <option value="">Nenhuma</option>
-              {(companiesData?.data ?? []).map((c: { id: number; name: string }) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </Select>
-          </div>
-        </div>
-        <div className={modalFoot}>
-          <Button variant="default" onClick={onClose}>Cancelar</Button>
-          <Button variant="primary" onClick={() => onSave({ title: form.title, amount: parseFloat(form.amount), due_date: form.due_date ? new Date(form.due_date).toISOString() : undefined, product: form.product, plane_id: planeId, client_id: clientId ? Number(clientId) : undefined, company_id: companyId ? Number(companyId) : undefined })}>
-            Criar título
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}

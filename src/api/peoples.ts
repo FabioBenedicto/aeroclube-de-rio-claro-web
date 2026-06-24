@@ -1,5 +1,5 @@
 import client from './client';
-import type { Person, CreditHistory, PaginatedResponse } from '../types';
+import type { People, PaginatedResponse } from '../types';
 
 export const getPeoples = (
   search?: string,
@@ -10,7 +10,7 @@ export const getPeoples = (
   dateTo?: string,
 ) =>
   client
-    .get<PaginatedResponse<Person>>('/peoples', {
+    .get<PaginatedResponse<People>>('/peoples', {
       params: {
         ...(search   && { search }),
         ...(category && { category }),
@@ -22,17 +22,20 @@ export const getPeoples = (
     })
     .then(r => r.data);
 
-export const getPerson = (id: number) =>
-  client.get<Person>(`/peoples/${id}`).then(r => r.data);
+export const getPeople = (id: number) =>
+  client.get<People>(`/peoples/${id}`).then(r => r.data);
 
-export const createPerson = (data: unknown) =>
-  client.post<Person>('/peoples', data).then(r => r.data);
+export const createPeople = (data: unknown) =>
+  client.post<People>('/peoples', data).then(r => r.data);
 
-export const updatePerson = (id: number, data: unknown) =>
-  client.patch<Person>(`/peoples/${id}`, data).then(r => r.data);
+export const updatePeople = (id: number, data: unknown) =>
+  client.patch<People>(`/peoples/${id}`, data).then(r => r.data);
 
-export const deletePerson = (id: number) =>
+export const deletePeople = (id: number) =>
   client.delete(`/peoples/${id}`);
+
+export const bulkDeletePeoples = (ids: number[]) =>
+  client.delete('/peoples/bulk', { data: { ids } });
 
 export const getPeoplesStats = () =>
   client
@@ -41,8 +44,3 @@ export const getPeoplesStats = () =>
     )
     .then(r => r.data);
 
-export const getPersonCredits = (personId: number) =>
-  client.get<CreditHistory>(`/peoples/${personId}/credits`).then(r => r.data);
-
-export const addPersonCredit = (personId: number, data: { amount: number }) =>
-  client.post(`/peoples/${personId}/credits`, data).then(r => r.data);

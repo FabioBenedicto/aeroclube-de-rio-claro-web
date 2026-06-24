@@ -1,48 +1,31 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { Sun, Moon, Monitor, Check, Lock, Trash2 } from 'lucide-react';
-import { updateMe, deleteMe } from '../api/users';
+import { Sun, Moon, Monitor, Check } from 'lucide-react';
+import { updateMe } from '../api/users';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { toast } from '../utils/toast';
-import type { UserRecord } from '../api/users';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 
-type Tab = 'info' | 'senha' | 'aparencia' | 'conta';
+type Tab = 'info' | 'senha' | 'aparencia';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'info',      label: 'Informações'  },
   { id: 'senha',     label: 'Senha'        },
   { id: 'aparencia', label: 'Aparência'    },
-  { id: 'conta',     label: 'Conta'        },
 ];
 
 const inpLock = 'w-full px-3 py-2 rounded-md border border-line bg-bg-sunk text-[13px] text-ink-3 outline-none cursor-not-allowed select-none';
 const errCls  = 'text-[11.5px] text-danger mt-0.5';
 
 export default function Profile() {
-  const { user, updateLoggedUser, logout } = useAuth();
+  const { user } = useAuth();
   const { theme, setTheme } = useTheme();
 
   const [tab, setTab] = useState<Tab>('info');
-  const [name, setName] = useState(user?.name ?? '');
   const [pass, setPass] = useState({ current: '', next: '', confirm: '' });
   const [passErrors, setPassErrors] = useState<Record<string, string>>({});
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  const infoMut = useMutation({
-    mutationFn: updateMe,
-    onSuccess: (data: UserRecord) => {
-      updateLoggedUser(data as any);
-      toast.success('Perfil atualizado.');
-    },
-  });
-
-  const deleteMut = useMutation({
-    mutationFn: deleteMe,
-    onSuccess: () => { logout(); },
-  });
 
   const passMut = useMutation({
     mutationFn: updateMe,
@@ -55,11 +38,6 @@ export default function Profile() {
       if (msg === 'Senha atual incorreta') setPassErrors({ current: 'Senha atual incorreta' });
     },
   });
-
-  function saveInfo() {
-    if (!name.trim()) return toast.error('Nome é obrigatório.');
-    infoMut.mutate({ name: name.trim() });
-  }
 
   function savePass() {
     const errs: Record<string, string> = {};
@@ -99,30 +77,18 @@ export default function Profile() {
 
       {/* Informações */}
       {tab === 'info' && (
-        <div className="bg-bg-elev border border-line rounded-lg p-5 flex flex-col gap-4">
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[12px] font-medium text-ink-2">Nome</label>
-              <Input value={name} onChange={e => setName(e.target.value)} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <label className="text-[12px] font-medium text-ink-2">E-mail</label>
-                <span className="flex items-center gap-1 text-[11px] text-ink-4">
-                  <Lock size={10} /> Não editável
-                </span>
-              </div>
-              <input className={inpLock} value={user?.email ?? ''} readOnly tabIndex={-1} />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[12px] font-medium text-ink-2">Papel</label>
-              <input className={inpLock} value={user?.role === 'ADMIN' ? 'Administrador' : 'Funcionário'} readOnly tabIndex={-1} />
-            </div>
+        <div className="bg-bg-elev border border-line rounded-lg p-5 flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-medium text-ink-2">Nome</label>
+            <input className={inpLock} value={user?.name ?? ''} readOnly tabIndex={-1} />
           </div>
-          <div className="flex justify-end">
-            <Button variant="primary" onClick={saveInfo} disabled={infoMut.isPending}>
-              <Check size={14} /> {infoMut.isPending ? 'Salvando…' : 'Salvar'}
-            </Button>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-medium text-ink-2">E-mail</label>
+            <input className={inpLock} value={user?.email ?? ''} readOnly tabIndex={-1} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[12px] font-medium text-ink-2">Papel</label>
+            <input className={inpLock} value={user?.role === 'ADMIN' ? 'Administrador' : 'Funcionário'} readOnly tabIndex={-1} />
           </div>
         </div>
       )}
@@ -165,47 +131,6 @@ export default function Profile() {
               <Check size={14} /> {passMut.isPending ? 'Salvando…' : 'Alterar senha'}
             </Button>
           </div>
-        </div>
-      )}
-
-      {/* Conta */}
-      {tab === 'conta' && (
-        <div className="bg-bg-elev border border-danger/30 rounded-lg p-5 flex flex-col gap-4">
-          <div>
-            <div className="text-[13px] font-medium text-ink mb-1">Excluir conta</div>
-            <p className="text-[12px] text-ink-3 m-0">Esta ação é permanente e não pode ser desfeita. Todos os seus dados de acesso serão removidos.</p>
-          </div>
-          {!confirmDelete ? (
-            <div>
-              <Button
-                variant="danger"
-                className="border-danger text-danger hover:bg-danger-soft"
-                onClick={() => setConfirmDelete(true)}
-              >
-                <Trash2 size={14} /> Excluir minha conta
-              </Button>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <p className="text-[13px] text-danger font-medium m-0">Tem certeza? Esta ação não pode ser desfeita.</p>
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="danger"
-                  className="bg-danger border-danger text-white hover:opacity-90 disabled:opacity-60"
-                  disabled={deleteMut.isPending}
-                  onClick={() => deleteMut.mutate()}
-                >
-                  <Trash2 size={14} /> {deleteMut.isPending ? 'Excluindo…' : 'Confirmar exclusão'}
-                </Button>
-                <Button
-                  variant="default"
-                  onClick={() => setConfirmDelete(false)}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
