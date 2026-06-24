@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, Trash2, MoreHorizontal, X, Plus } from 'lucide-react';
+import { Download, Trash2, MoreHorizontal, Plus } from 'lucide-react';
+import SelectionModal from '../../components/ui/SelectionModal';
 import {
   getBillsPending,
   generateRemessa,
@@ -144,94 +145,94 @@ function GerarRemessaModal({ onClose, onSuccess }: {
   const selectedTotal = selectedBills.reduce((s, b) => s + Number(b.total_amount), 0);
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div
-        className="bg-bg-elev border border-line rounded-[10px] w-full max-w-[680px] shadow-[var(--shadow)] flex flex-col max-h-[90vh]"
-        onClick={e => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-line">
-          <div className="text-[15px] font-semibold">Gerar Remessa CNAB</div>
-          <div className="flex items-center gap-3">
-            <DateInput value={dueFrom} onChange={setDueFrom} className="w-[120px]" />
-            <span className="text-[12px] text-ink-3">até</span>
-            <DateInput value={dueTo} onChange={setDueTo} className="w-[120px]" />
-            <Button variant="default" onClick={() => { setAppliedFrom(dueFrom); setAppliedTo(dueTo); setPage(1); setSelected(new Set()); }}>Filtrar</Button>
-            <button className="inline-flex items-center justify-center w-7 h-7 rounded text-ink-3 hover:text-ink hover:bg-bg-hover bg-transparent border-0 cursor-pointer" onClick={onClose}>
-              <X size={15} />
-            </button>
+    <SelectionModal
+      title="Gerar Remessa CNAB"
+      onClose={onClose}
+      maxWidth={680}
+      filters={
+        <>
+          <DateInput value={dueFrom} onChange={setDueFrom} className="w-[120px]" />
+          <span className="text-[12px] text-ink-3">até</span>
+          <DateInput value={dueTo} onChange={setDueTo} className="w-[120px]" />
+          <Button
+            variant="default"
+            onClick={() => { setAppliedFrom(dueFrom); setAppliedTo(dueTo); setPage(1); setSelected(new Set()); }}
+          >
+            Filtrar
+          </Button>
+        </>
+      }
+      footer={
+        <>
+          <span className="text-[13px] text-ink-3">
+            {selected.size > 0
+              ? `${selected.size} fatura(s) · R$ ${formatBRL(selectedTotal)}`
+              : 'Nenhuma selecionada'}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="default" onClick={onClose}>Cancelar</Button>
+            <Button
+              variant="primary"
+              disabled={selected.size === 0 || remessaMut.isPending}
+              onClick={() => remessaMut.mutate(Array.from(selected))}
+            >
+              <Download size={14} />
+              {remessaMut.isPending ? 'Gerando…' : 'Gerar e Baixar'}
+            </Button>
           </div>
-        </div>
-
-        {selected.size > 0 && (
-          <div className="flex items-center justify-between px-5 py-2.5 bg-accent/10 border-b border-accent/20">
-            <span className="text-[13px] text-accent font-medium">
-              {selected.size} fatura(s) · R$ {formatBRL(selectedTotal)}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                className="inline-flex items-center justify-center w-6 h-6 rounded text-ink-3 hover:text-ink hover:bg-bg-hover bg-transparent border-0 cursor-pointer"
-                onClick={() => setSelected(new Set())}
-              >
-                <X size={13} />
-              </button>
-              <Button
-                variant="primary"
-                disabled={remessaMut.isPending}
-                onClick={() => remessaMut.mutate(Array.from(selected))}
-              >
-                <Download size={14} />
-                {remessaMut.isPending ? 'Gerando…' : 'Gerar e Baixar'}
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <div className="overflow-y-auto flex-1">
-          <table className="w-full border-collapse text-[13px]">
-            <thead>
-              <tr>
-                <th className={thCls + ' w-9'}><Checkbox checked={allSelected} onChange={toggleAll} /></th>
-                <th className={thCls}>ID</th>
-                <th className={thCls}>Cliente</th>
-                <th className={thNumCls}>Valor</th>
-                <th className={thCls}>Vencimento</th>
-                <th className={thCls}>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                <Skeleton.TableRows cols={6} rows={5} />
-              ) : bills.length === 0 ? (
-                <tr><td colSpan={6} className="px-3.5 py-8 text-center text-ink-3">Nenhuma fatura em aberto</td></tr>
-              ) : bills.map(bill => (
-                <tr
-                  key={bill.id}
-                  className={`border-b border-line hover:bg-bg-hover cursor-pointer ${selected.has(bill.id) ? 'bg-accent/5' : ''}`}
-                  onClick={() => toggleOne(bill.id)}
-                >
-                  <td className={tdCls + ' w-9'}>
-                    <Checkbox checked={selected.has(bill.id)} onChange={() => toggleOne(bill.id)} onClick={e => e.stopPropagation()} />
-                  </td>
-                  <td className={tdCls + ' font-mono text-ink-3'}>#{bill.id}</td>
-                  <td className={tdCls}>{bill.customer?.name ?? '—'}</td>
-                  <td className={tdCls + ' text-right font-mono'}>R$ {formatBRL(bill.total_amount)}</td>
-                  <td className={tdCls + ' text-ink-3'}>{bill.due_date ? formatDate(bill.due_date) : '—'}</td>
-                  <td className={tdCls}>
-                    <Badge variant={BILL_STATUS_BADGE[bill.status]}>{BILL_STATUS_LABEL[bill.status]}</Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {billsData && billsData.totalPages > 1 && (
-          <div className="border-t border-line">
-            <Pagination page={page} totalPages={billsData.totalPages} total={billsData.total} limit={20} onChange={p => { setPage(p); setSelected(new Set()); }} />
-          </div>
-        )}
-      </div>
-    </div>
+        </>
+      }
+      pagination={
+        billsData && billsData.totalPages > 1
+          ? (
+            <Pagination
+              page={page}
+              totalPages={billsData.totalPages}
+              total={billsData.total}
+              limit={20}
+              onChange={p => { setPage(p); setSelected(new Set()); }}
+            />
+          )
+          : undefined
+      }
+    >
+      <table className="w-full border-collapse text-[13px]">
+        <thead>
+          <tr>
+            <th className={thCls + ' w-9'}><Checkbox checked={allSelected} onChange={toggleAll} /></th>
+            <th className={thCls}>ID</th>
+            <th className={thCls}>Cliente</th>
+            <th className={thNumCls}>Valor</th>
+            <th className={thCls}>Vencimento</th>
+            <th className={thCls}>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading ? (
+            <Skeleton.TableRows cols={6} rows={5} />
+          ) : bills.length === 0 ? (
+            <tr><td colSpan={6} className="px-3.5 py-8 text-center text-ink-3">Nenhuma fatura em aberto</td></tr>
+          ) : bills.map(bill => (
+            <tr
+              key={bill.id}
+              className={`border-b border-line hover:bg-bg-hover cursor-pointer${selected.has(bill.id) ? ' bg-accent/5' : ''}`}
+              onClick={() => toggleOne(bill.id)}
+            >
+              <td className={tdCls + ' w-9'}>
+                <Checkbox checked={selected.has(bill.id)} onChange={() => toggleOne(bill.id)} onClick={e => e.stopPropagation()} />
+              </td>
+              <td className={tdCls + ' font-mono text-ink-3'}>#{bill.id}</td>
+              <td className={tdCls}>{bill.customer?.name ?? '—'}</td>
+              <td className={tdCls + ' text-right font-mono'}>R$ {formatBRL(bill.total_amount)}</td>
+              <td className={tdCls + ' text-ink-3'}>{bill.due_date ? formatDate(bill.due_date) : '—'}</td>
+              <td className={tdCls}>
+                <Badge variant={BILL_STATUS_BADGE[bill.status]}>{BILL_STATUS_LABEL[bill.status]}</Badge>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </SelectionModal>
   );
 }
 
